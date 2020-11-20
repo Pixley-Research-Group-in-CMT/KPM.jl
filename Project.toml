@@ -1,0 +1,13 @@
+name = "KPM"
+uuid = "479eba37-df18-4d3d-9d60-66182c7f1954"
+authors = ["Yixing Fu"]
+version = "0.1.0"
+
+[compat]
+julia = "1.5"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

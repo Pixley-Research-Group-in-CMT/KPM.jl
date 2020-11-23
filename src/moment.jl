@@ -54,7 +54,7 @@ end
 
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Calculate the moments μ defined in KPM. Output is saved in `mu`.
 

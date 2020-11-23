@@ -2,7 +2,7 @@ using DocStringExtensions
 using ProgressBars
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Calculate the moments μ defined in KPM. 
 
@@ -78,7 +78,7 @@ function kpm_1d!(
                 psi_in;
                 verbose=0,
                 # working arrays
-                α_all = maybe_on_device_zeros(NH, NR, 2)
+                α_all = maybe_on_device_zeros(NH, NR, 2),
                 μ_all = maybe_on_device_zeros(NR, NC)
                 )
     H = maybe_to_device(H)
@@ -151,14 +151,14 @@ function kpm_1d!(
                 verbose=0
                 )
     # with different left and right.
-    throw("unimplemented")
+    throw("unimplemented.")
 end
 
 
 
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Calculate moments for 2D KPM. 
 
@@ -222,15 +222,15 @@ function kpm_2d(
 end
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 In place KPM2D. This is also the main building block for KPM_2D. This
 method only provide NR=1.
 
-Calculates `ψ0l * Tm(H) * Jβ * Tn(H) * Jα * ψ0r`.
-When ψ0r and ψ0l are chosen to be random and identical, the output approximates
-tr(Tm(H) Jβ Tn(H) Jα). The accuracy is ~ O(1/sqrt(NR * NH)) with NR
-repetitions. NC controls the energy resolution of the result.
+Calculates `ψ0l * Tm(H) * Jβ * Tn(H) * Jα * ψ0r`.  When `ψ0r` and `ψ0l` are
+chosen to be random and identical, the output approximates `tr(Tm(H) Jβ Tn(H) Jα)`.
+The accuracy is ``\\sim O(1/sqrt(NR * NH))`` with NR repetitions. NC controls
+the energy resolution of the result.
 
 Output: nothing. Result is saved on μ.
 
@@ -255,21 +255,21 @@ will be overwritten.
 
 - `arr_size` : The buffer array size. Minimum is 3. Determines the number of
 left states to be kept in memory for each loop of right states. The time
-complexity is reduced from O(N*NC^2) to O(N*NC*arr_size) while space
-complexity is increased from O(N*NC) to O(N*NC*arr_size).
+complexity is reduced from ``O(N\\times NC\^2)`` to ``O(N\\times NC\\times arr\\_size)`` while space
+complexity is increased from ``O(N\\times NC)`` to O(N\\times NC\\times arr\\_size).
 
 - `psi_in_l` : Passes value to ψ0l. Size is (NH, NR). The array is not updated.
 Whether the input is normalized or not, it is assumed to be intended.
-Usually psi_in_l should be normalized.
+Usually `psi_in_l` should be normalized.
 
 - `psi_in_r` : Passes value to ψ0r. Size is (NH, NR). The array is not updated.
 Whether the input is normalized or not, it is assumed to be intended.
-Usually psi_in_r should be normalized.
+Usually `psi_in_r` should be normalized.
 
 **working spaces KWARGS**: The following keyword args are simply providing working
 place arrays to avoid repetitive allocation and GC. They are automatically
-created if not set. However, when using KPM_2D! for many times, it
-is beneficial to reuse those arrays.  CONVENTION: args with 'ψ' are all
+created if not set. However, when using `KPM_2D!` for many times, it
+is beneficial to reuse those arrays.  CONVENTION: args with `ψ` are all
 working space arr.
 
 - `ψ0r=maybe_on_device_zeros(NH, NR)`
@@ -297,7 +297,86 @@ function kpm_2d!(
                  ψall_l=maybe_on_device_zeros(NH, NR, arr_size),
                  ψw=maybe_on_device_zeros(NH, NR),
                 )
-    throw("unimplemented")
+
+    # random vector
+    if size(psi_in_r) == (NH, NR)
+        println("Using given psi_r. norm assumed but not enforced.")
+        ψ0r .= maybe_to_device(psi_in_r)
+    else
+        ψ0r .= exp.(2im*pi*maybe_on_device_rand(NH, NR))
+        normalize_by_col(ψ0r, NR)
+    end
+
+    H = maybe_to_device(H)
+    Jα = maybe_to_device(Jα)
+    Jβ = maybe_to_device(Jβ)
+
+
+    if size(psi_in_l) == (NH, NR)
+        println("Using given psi_l. norm assumed but not enforced.")
+        ψ0l .= maybe_to_device(psi_in_l)
+    else
+        ψ0l .= ψ0r
+    end
+
+    # generate all views
+    ψall_l_views = map(x -> view(ψall_l, :, :, x), 1:arr_size)
+    ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:3)
+
+    # left starter
+    ψall_l_views[1] .= ψ0l
+    println("$(typeof(ψw)), $(typeof(H)), $(typeof(ψ0l))")
+    mul!(ψw, H, ψ0l)
+    ψall_l_views[2] .= ψw
+
+    # right starter
+    mul!(Jψ0r, Jα, ψ0r)
+
+    reps = Integer(ceil(NC/arr_size - 1))
+
+    for rep in 1:(reps+1)
+        m1 = (rep - 1) * arr_size + 1
+        m2 = min(rep * arr_size, NC)
+        println("$(m1) to $(m2)")
+        rep_size = m2 - m1 + 1
+        μ_rep = maybe_on_device_zeros(rep_size) # temp array for μ #Q: is there a better solution?
+        # loop over l
+        chebyshev_iter(H, ψall_l_views, rep_size)
+
+        # loop over r
+        n = 1
+        ψall_r_views[n] .= Jψ0r
+        mul!(JTnHJψr, Jβ,ψall_r_views[n])
+
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
+        @. μ[n, m1:m2] = μ_rep
+        ## TODO: IMPROVE THIS?
+
+        # n = 2
+        n = 2
+        mul!(ψall_r_views[n], H, Jψ0r) # use initial values to calc Hψ0r
+        mul!(JTnHJψr, Jβ, ψall_r_views[n])
+
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
+        @. μ[n, m1:m2] = μ_rep
+
+        for n in ProgressBar(3:NC) # TODO : save memory possible here. We do not need 3 vectors for psi 2
+            chebyshev_iter_single(H,
+                                  ψall_r_views[r_ipp(n)],
+                                  ψall_r_views[r_ip(n)],
+                                  ψall_r_views[r_i(n)])
+            mul!(JTnHJψr, Jβ, ψall_r_views[r_i(n)])
+
+            broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
+            @. μ[n, m1:m2] = μ_rep
+        end
+
+        # wrap around to prepare for next
+        chebyshev_iter_wrap(H, ψall_l_views, arr_size) #timed
+    end
+
+    println("KPM2D: data type μ = ", typeof(μ))
+    return nothing
 end
 
 

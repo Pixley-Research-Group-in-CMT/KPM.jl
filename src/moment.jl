@@ -76,7 +76,7 @@ function kpm_1d!(
                 H, NC::Int64, NR::Int64, NH::Int64,
                 mu,
                 psi_in;
-                verbose=0
+                verbose=0,
                 # working arrays
                 α_all = maybe_on_device_zeros(NH, NR, 2)
                 μ_all = maybe_on_device_zeros(NR, NC)

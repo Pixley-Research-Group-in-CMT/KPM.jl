@@ -6,8 +6,6 @@ $(SIGNATURES)
 
 Calculate the moments μ defined in KPM. 
 
-**Fields**
-
 - `H`           -- Hamiltonian. A matrix or sparse matrix
 
 - `NC`          -- Integer. the cut off dimension
@@ -31,21 +29,27 @@ function kpm_1d(
                 force_norm=false,
                 verbose=0
                )
+    mu = on_host_zeros(dt_cplx, NC)
     if isnothing(psi_in)
-        @assert (!isnothing(psi_in_l) & !isnothing(psi_in_r)) "must either set `psi_in` or set `psi_in_l` and `psi_in_r`."
+        if (!isnothing(psi_in_l) | !isnothing(psi_in_r))
+            @assert (!isnothing(psi_in_l) & !isnothing(psi_in_r)) "must set both `psi_in_l` and `psi_in_r` or neither."
+            if force_norm
+                normalize_by_col(psi_in_l, NR)
+                normalize_by_col(psi_in_r, NR)
+            end
+            kpm_1d!(H, NC, NR, NH, mu, psi_in_l, psi_in_r)
+        else
+            kpm_1d!(H, NC, NR, NH, mu)
+        end
     else
         @assert (isnothing(psi_in_l) & isnothing(psi_in_r)) "must either set `psi_in` or set `psi_in_l` and `psi_in_r`, but not both."
-        psi_in_l = psi_in
-        psi_in_r = psi_in
+        if force_norm
+            normalize_by_col(psi_in, NR)
+        end
+        kpm_1d!(H, NC, NR, NH, mu, psi_in)
     end
 
-    if force_norm
-        normalize_by_col(psi_in_l, NR)
-        normalize_by_col(psi_in_r, NR)
-    end
-
-    mu = on_host_zeros(dt_cplx, NC)
-    kpm_1d!(H, NC, NR, NH, mu, psi_in_l, psi_in_r)
+    return mu
 end
 
 
@@ -53,8 +57,6 @@ end
 $(SIGNATURES)
 
 Calculate the moments μ defined in KPM. Output is saved in `mu`.
-
-**Fields**
 
 - `H`           -- Hamiltonian. A matrix or sparse matrix
 
@@ -66,64 +68,34 @@ Calculate the moments μ defined in KPM. Output is saved in `mu`.
 
 - `mu`          -- Array. Output
 
-- `psi_in_l`    -- Array. Input array on the left side. A ket as `psi_in_r`.
-Hence, when calculating trace like in DOS, `psi_in_l == psi_in_r`. 
+- `psi_in`      -- Array (optional). Input array on the right side. A ket.
 
-- `psi_in_r`    -- Array. Input array on the right side. A ket. Hence for
-example, when calculating trace like in DOS, `psi_in_l == psi_in_r`. 
-
-- `force_norm`  -- Boolean, Optional. Apply normalization.
 
 """
 function kpm_1d!(
                 H, NC::Int64, NR::Int64, NH::Int64,
-                mu;
-                psi_in_l=ComplexF64[],
-                psi_in_r=ComplexF64[],
+                mu,
+                psi_in;
                 verbose=0
+                # working arrays
+                α_all = maybe_on_device_zeros(NH, NR, 2)
+                μ_all = maybe_on_device_zeros(NR, NC)
                 )
-    # TODO make this true inplace. Now it is wrapping 
-    # a not-inplace version for consistent api. 
     H = maybe_to_device(H)
 
     @assert (mod(NC, 2) == 1) "Invalid NC: NC should be even."
     NChalf = div(NC,2)
-    μ_all = maybe_on_device_zeros(NR, NC)
 
-    # set psi_in if given; or choose random
     psi_in_size = size(psi_in)
-    if psi_in_size == (NR, NH)
-        psi_in = Array(transpose(psi_in))
-        if force_norm
-            normalize_by_col(psi_in, NR)
-        else
-            println("assuming but not forcing normalized input psi")
-        end
-    elseif psi_in_size == (NH, NR)
-        println("assuming but not forcing normalized input psi")
-        # make all into size NH, NR
-        if force_norm
-            normalize_by_col(psi_in, NR)
-        else
-            println("assuming but not forcing normalized input psi")
-        end
-    else
-        psi_in = exp.(maybe_on_device_rand(NH, NR) * (2.0im * pi))
-        normalize_by_col(psi_in, NR)
-    end
+    @assert (psi_in_size == (NH, NR)) "Invalid `psi_in` with size $(psi_in_size). Expecting $(NH), $(NR)"
 
-    # elevate to computational intense array form
-    psi_in = maybe_to_device(psi_in)
-
-    # allocate 
-    α_all = maybe_on_device_zeros(NH, NR, 2)
-
-    α_all[:, :, 1] = psi_in
+    α_all[:, :, 1] = maybe_to_device(psi_in)
         
     mul!((@view α_all[:, :, 2]), H, (@view α_all[:, :, 1]))
     @. μ_all[:, 1] = 1.0
     mu1 = on_host_zeros(NR)
 
+    # TODO this can be optimized
     for NRi in 1:NR
         mu1[NRi] = dot((@view α_all[:, NRi, 1]), (@view α_all[:, NRi, 2]))
     end
@@ -133,25 +105,23 @@ function kpm_1d!(
 
     ip = 2
     ipp = 1
-        
 
+    n_enum = 2:NChalf
     if verbose >= 1
-        n_enum = ProgressBar(2:NChalf)
-    else
-        n_enum = 2:NChalf
+        n_enum = ProgressBar(n_enum)
     end
 
+    α_views = [view(α_all, :, :, 1), view(α_all, :, :, 2)]
     for n=n_enum
-        chebyshev_iter_single(H, α_all, ipp, ip)
+        chebyshev_iter_single(H, α_views[ipp], α_views[ip])
 
         broadcast_dot_1d_1d!((@view μ_all[:, 2n-1]),
-                             (@view α_all[:, :, ip]),
-                             (@view α_all[:, :, ip]),
-                             NR, 2.0, -1.0)
+                             α_view[ip],
+                             α_view[ip], NR, 2.0, -1.0)
 
         broadcast_dot_1d_1d!((@view μ_all[:, 2n]),
-                             (@view α_all[:, :, ip]),
-                             (@view α_all[:, :, ipp]),
+                             α_view[ip],
+                             α_view[ipp],
                              NR, 2.0, -mu1)
 
         ip = 3-ip
@@ -165,6 +135,26 @@ function kpm_1d!(
                        )
     return nothing
 end
+function kpm_1d!(
+                H, NC::Int64, NR::Int64, NH::Int64,
+                mu;
+                verbose=0
+                )
+    psi_in = exp.(maybe_on_device_rand(NH, NR) * (2.0im * pi))
+    normalize_by_col(psi_in, NR)
+    kpm_1d!(H, NC, NR, NH, mu, psi_in, psi_in)
+end
+function kpm_1d!(
+                H, NC::Int64, NR::Int64, NH::Int64,
+                mu,
+                psi_in_l, psi_in_r;
+                verbose=0
+                )
+    # with different left and right.
+    throw("unimplemented")
+end
+
+
 
 
 """
@@ -246,33 +236,33 @@ Output: nothing. Result is saved on μ.
 
 **ARGS**
 
-- `H: Hamiltonian. A sparse 2D array.
+- `H` : Hamiltonian. A sparse 2D array.
 
-- `Jα: Current operator. A sparse 2D array.
+- `Jα` : Current operator. A sparse 2D array.
 
-- `Jβ: Current operator. A sparse 2D array.
+- `Jβ` : Current operator. A sparse 2D array.
 
-- `NC: Integer. KPM cutoff order.
+- `NC` : Integer. KPM cutoff order.
 
-- `NR: Integer. Number of random vectors.
+- `NR` : Integer. Number of random vectors.
 
-- `NH: Integer. Dimension of H, Jα and Jβ
+- `NH` : Integer. Dimension of H, Jα and Jβ
 
-- `μ: 2D Array of dimension (NC, NC). Results will be updated here. Any data
+- `μ` : 2D Array of dimension (NC, NC). Results will be updated here. Any data
 will be overwritten.
     
 **KWARGS**
 
-- `arr_size: The buffer array size. Minimum is 3. Determines the number of
+- `arr_size` : The buffer array size. Minimum is 3. Determines the number of
 left states to be kept in memory for each loop of right states. The time
 complexity is reduced from O(N*NC^2) to O(N*NC*arr_size) while space
 complexity is increased from O(N*NC) to O(N*NC*arr_size).
 
-- `psi_in_l: Passes value to ψ0l. Size is (NH, NR). The array is not updated.
+- `psi_in_l` : Passes value to ψ0l. Size is (NH, NR). The array is not updated.
 Whether the input is normalized or not, it is assumed to be intended.
 Usually psi_in_l should be normalized.
 
-- `psi_in_r: Passes value to ψ0r. Size is (NH, NR). The array is not updated.
+- `psi_in_r` : Passes value to ψ0r. Size is (NH, NR). The array is not updated.
 Whether the input is normalized or not, it is assumed to be intended.
 Usually psi_in_r should be normalized.
 

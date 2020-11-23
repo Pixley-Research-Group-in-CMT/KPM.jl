@@ -53,4 +53,6 @@ function timestamp(text; t = [time(), time()], r = 0, init = false, rank=0)
     t[2] = curr_time
 
 end
+
+
 end

@@ -251,20 +251,27 @@ Output: nothing. Result is saved on μ.
 - `μ` : 2D Array of dimension (NC, NC). Results will be updated here. Any data
 will be overwritten.
     
+- `psi_in` : Set `psi_in_l` and `psi_in_r`. Size is (NH, NR). The array is not updated.
+Whether the input is normalized or not, it is assumed to be intended.
+Usually `psi_in` should be normalized.
+
+- `psi_in_l` : Passes value to ψ0l. Size is (NH, NR). The array is not updated.
+Whether the input is normalized or not, it is assumed to be intended.
+Usually `psi_in_l` should be normalized. `psi_in_l` is given as column vector
+of ket ``|ψl> = <ψl|^\\dagger``
+
+- `psi_in_r` : Passes value to ψ0r. Size is (NH, NR). The array is not updated.
+Whether the input is normalized or not, it is assumed to be intended.
+Usually `psi_in_r` should be normalized. `psi_in_r` is given as column vector
+of ket ``|ψr>``. 
+
 **KWARGS**
 
 - `arr_size` : The buffer array size. Minimum is 3. Determines the number of
 left states to be kept in memory for each loop of right states. The time
-complexity is reduced from ``O(N\\times NC\^2)`` to ``O(N\\times NC\\times arr\\_size)`` while space
-complexity is increased from ``O(N\\times NC)`` to O(N\\times NC\\times arr\\_size).
+complexity is reduced from ``O(N\\times NC^2)`` to ``O(N\\times NC\\times arr\\_size)`` while space
+complexity is increased from ``O(N\\times NC)`` to ``O(N\\times NC\\times arr\\_size)``.
 
-- `psi_in_l` : Passes value to ψ0l. Size is (NH, NR). The array is not updated.
-Whether the input is normalized or not, it is assumed to be intended.
-Usually `psi_in_l` should be normalized.
-
-- `psi_in_r` : Passes value to ψ0r. Size is (NH, NR). The array is not updated.
-Whether the input is normalized or not, it is assumed to be intended.
-Usually `psi_in_r` should be normalized.
 
 **working spaces KWARGS**: The following keyword args are simply providing working
 place arrays to avoid repetitive allocation and GC. They are automatically
@@ -284,10 +291,11 @@ working space arr.
 function kpm_2d!(
                  H, Jα, Jβ,
                  NC::Int64, NR::Int64, NH::Int64,
-                 μ;
+                 μ,
+                 psi_in_l,
+                 psi_in_r;
                  arr_size::Int64=3,
-                 psi_in_l=maybe_on_device_zeros(0),
-                 psi_in_r=maybe_on_device_zeros(0),
+                 verbose=0,
                  # workspace kwargs
                  ψ0r=maybe_on_device_zeros(NH, NR),
                  Jψ0r=maybe_on_device_zeros(NH, NR),
@@ -298,26 +306,15 @@ function kpm_2d!(
                  ψw=maybe_on_device_zeros(NH, NR),
                 )
 
-    # random vector
-    if size(psi_in_r) == (NH, NR)
-        println("Using given psi_r. norm assumed but not enforced.")
-        ψ0r .= maybe_to_device(psi_in_r)
-    else
-        ψ0r .= exp.(2im*pi*maybe_on_device_rand(NH, NR))
-        normalize_by_col(ψ0r, NR)
-    end
+    # do not enforce normalization
+    @assert (size(psi_in_r) == (NH, NR)) "`psi_in_r` has size $(size(psi_in_r)) but expecting $(NH), $(NR)"
+    @assert (size(psi_in_l) == (NH, NR)) "`psi_in_l` has size $(size(psi_in_l)) but expecting $(NH), $(NR)"
+    ψ0r .= maybe_to_device(psi_in_r)
+    ψ0l .= maybe_to_device(psi_in_l)
 
     H = maybe_to_device(H)
     Jα = maybe_to_device(Jα)
     Jβ = maybe_to_device(Jβ)
-
-
-    if size(psi_in_l) == (NH, NR)
-        println("Using given psi_l. norm assumed but not enforced.")
-        ψ0l .= maybe_to_device(psi_in_l)
-    else
-        ψ0l .= ψ0r
-    end
 
     # generate all views
     ψall_l_views = map(x -> view(ψall_l, :, :, x), 1:arr_size)
@@ -337,7 +334,7 @@ function kpm_2d!(
     for rep in 1:(reps+1)
         m1 = (rep - 1) * arr_size + 1
         m2 = min(rep * arr_size, NC)
-        println("$(m1) to $(m2)")
+        println("rep $(rep)/$(reps+1): $(m1) to $(m2)")
         rep_size = m2 - m1 + 1
         μ_rep = maybe_on_device_zeros(rep_size) # temp array for μ #Q: is there a better solution?
         # loop over l
@@ -360,7 +357,11 @@ function kpm_2d!(
         broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
         @. μ[n, m1:m2] = μ_rep
 
-        for n in ProgressBar(3:NC) # TODO : save memory possible here. We do not need 3 vectors for psi 2
+        n_enum = 3:NC
+        if verbose >= 1
+            n_enum = ProgressBar(n_enum)
+        end
+        for n in n_enum # TODO : save memory possible here. We do not need 3 vectors for psi 2
             chebyshev_iter_single(H,
                                   ψall_r_views[r_ipp(n)],
                                   ψall_r_views[r_ip(n)],
@@ -375,9 +376,29 @@ function kpm_2d!(
         chebyshev_iter_wrap(H, ψall_l_views, arr_size) #timed
     end
 
-    println("KPM2D: data type μ = ", typeof(μ))
     return nothing
 end
+function kpm_2d!(
+                 H, Jα, Jβ,
+                 NC::Int64, NR::Int64, NH::Int64,
+                 μ,
+                 psi_in;
+                 kwargs...
+                )
+    kpm_2d!(H, Jα, Jβ, NC, NR, NH, μ, psi_in, psi_in; kwargs...)
+    return nothing
+end
+function kpm_2d!(
+                 H, Jα, Jβ,
+                 NC::Int64, NR::Int64, NH::Int64,
+                 μ;
+                 kwargs...
+                )
 
+    # random vector
+    psi_in = exp.(2im*pi*maybe_on_device_rand(NH, NR))
+    normalize_by_col(psi_in, NR)
 
-###########
+    kpm_2d!(H, Jα, Jβ, NC, NR, NH, μ, psi_in; kwargs...)
+    return nothing
+end

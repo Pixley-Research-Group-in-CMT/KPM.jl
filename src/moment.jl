@@ -6,13 +6,13 @@ $(TYPEDSIGNATURES)
 
 Calculate the moments μ defined in KPM. 
 
-- `H`           -- Hamiltonian. A matrix or sparse matrix
+- `H`           -- Hamiltonian. A matrix or sparse matrix.
 
-- `NC`          -- Integer. the cut off dimension
+- `NC`          -- Integer. the cut off dimension.
 
-- `NR`          -- Integer. number of random vectors used for KPM evaluation
+- `NR`          -- Integer. number of random vectors used for KPM evaluation.
 
-- `NH`          -- Integer. the size of hamiltonian
+- `NH`          -- Integer. the size of hamiltonian.
 
 - `psi_in`      -- Optional. Allow setting random vector manually.
 

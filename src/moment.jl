@@ -8,13 +8,13 @@ $(METHODLIST)
 The in-place version of 1D KPM. 
 Calculate the moments μ defined in KPM. Output is saved in `mu`.
 
-- `H`           -- Hamiltonian. A matrix or sparse matrix
+- `H`           -- Hamiltonian. A matrix or sparse matrix.
 
-- `NC`          -- Integer. the cut off dimension
+- `NC`          -- Integer. the cut off dimension.
 
-- `NR`          -- Integer. number of random vectors used for KPM evaluation
+- `NR`          -- Integer. number of random vectors used for KPM evaluation.
 
-- `NH`          -- Integer. the size of hamiltonian
+- `NH`          -- Integer. the size of hamiltonian.
 
 - `mu_all`          -- Array. Output for each random vector. Size (NR, NC). 
 

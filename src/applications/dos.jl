@@ -22,7 +22,7 @@ function dos end
 """
 $(METHODLIST)
 
-Calculate DOS and energy derivatives at zero energy.
+Calculate DOS and its energy derivatives (by setting `dE_order`) at zero energy.
 """
 function dos0 end
 
@@ -39,7 +39,7 @@ function dos(
              fix_normalization = 0
             )
     H_rescale_factor, H_norm = normalizeH(H; fixed_a=fix_normalization)
-    μ = kpm_1d(H, NC, NR)
+    μ = kpm_1d(H_norm, NC, NR)
 
     return dos(μ, H_rescale_factor; E_grid=E_grid, E_range=E_range, N_tilde=N_tilde, kernel=kernel, NC=NC)
 end
@@ -62,6 +62,7 @@ function dos(
         NC = length(μ)
     else
         NC = min(NC,length(μ))
+        println("NC should not be larger than length of μ. Decreased to $(NC)")
     end
 
 
@@ -104,4 +105,44 @@ function dos(
 
     rhoE_full[idx] = maybe_to_host(rhoE)
     return E_grid, rhoE_full
+end
+
+function dos0(
+              μ, H_rescale_factor;
+              NC::Int64=0,
+              kernel=JacksonKernel,
+              dE_order=0
+             )
+    @assert H_rescale_factor > 0
+    a = H_rescale_factor # for convenience
+
+    if NC == 0
+        NC = length(μ)
+    else
+        NC = min(NC,length(μ))
+        println("NC should not be larger than length of μ. Decreased to $(NC)")
+    end
+
+    n_0 = 0:4:(NC-1)
+    n_2 = 2:4:(NC-1)
+
+    mu_n0 = μ[n_0 .+ 1]
+    mu_n2 = μ[n_2 .+ 1]
+
+    if dE_order == 0
+        res = 0
+        res += sum(@. mu_n0 * hn(n_0) * kernel(n_0, NC))
+        res -= sum(@. mu_n2 * hn(n_2) * kernel(n_2, NC))
+        res /= (a * pi)
+        return res
+    elseif dE_order == 2
+        res = 0
+        res += sum(@. mu_n0 * hn(n_0) * kernel(n_0, NC) * (1 - n_0 ^ 2))
+        res += sum(@. mu_n2 * hn(n_2) * kernel(n_2, NC) * (n_2 ^ 2 - 1))
+        res /= (a^3 * pi)
+        return res
+    else
+        throw("unimplemented for derivative of order $(dE_order).")
+    end
+
 end

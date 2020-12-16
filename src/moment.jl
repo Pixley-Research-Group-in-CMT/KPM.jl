@@ -175,7 +175,7 @@ function kpm_2d end
 
 
 
-
+kpm_1d(H, NC::Int64, NR::Int64; kwargs...) = kpm_1d(H, NC, NR, size(H)[1]; kwargs...)
 function kpm_1d(
                 H, NC::Int64, NR::Int64, NH::Int64;
                 psi_in=nothing,

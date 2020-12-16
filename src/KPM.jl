@@ -6,10 +6,7 @@ dt_num = Union{Float64, ComplexF64}
 
 include("device.jl")
 
-include("utils/physics.jl")
-include("utils/external.jl")
-include("utils/vectors.jl")
-include("utils/chebyshev.jl")
+include("utils/Utils.jl")
 
 include("kernels/kernels.jl")
 

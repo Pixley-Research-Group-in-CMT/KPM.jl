@@ -4,11 +4,10 @@ using ProgressBars
 """
 $(METHODLIST)
 
-dos(μ, a::Float64, Ntilde::Integer;
-Erange::Array{Float64,1}=[-1.0,1.0], NC::Integer=0, kernel=JacksonKernel)
-
 Calculate DOS for a fermi energy grid spanning Erange with Ntilde total points.
 If Erange is (0,0), automatically set it to be sightly smaller than full size.
+
+When 
 """
 function dos end
 
@@ -19,6 +18,18 @@ function dos(μ,
              Ntilde::Integer;Erange::Array{T,1}where {T<:Real}=[-1.0,1.0],
              NC::Integer=0,
              kernel = JacksonKernel)
+    if length(size(μ)) != 1
+        println("The input is not 1D array. Assuming the input is Hamiltonian normalized by a. Running `kpm_1d`...")
+        H = μ
+        NH = size(H)[1]
+        if NC == 0
+            println("NC is set to default (1024)")
+            NC = 1024
+        end
+        NR = 21
+        println("NR is set to default (21)") #TODO better default NR needed
+        μ = kpm_1d(H, NC, NR)
+    end
 
     μ = maybe_to_device(μ)
 

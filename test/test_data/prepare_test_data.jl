@@ -22,4 +22,4 @@ for (i, E) in enumerate(E_grid)
     c_dos_ED[i] = sum(ev .<= E) / NH
 end
 
-@save "ops_small_ED.jld2", E_grid, c_dos_ED
+@save "ops_small_ED.jld2" E_grid c_dos_ED

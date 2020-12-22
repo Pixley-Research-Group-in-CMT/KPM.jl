@@ -302,9 +302,20 @@ function kpm_2d(
                 psi_in=nothing,
                 psi_in_l=nothing,
                 psi_in_r=nothing,
-                kwargs...
+                arr_size=3,
+                verbose=0
                )
-    throw("unimplemented")
+    mu = zeros(dt_cplx, NC, NC)
+    if isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu; arr_size=arr_size, verbose=verbose)
+    elseif !isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in; arr_size=arr_size, verbose=verbose)
+    elseif isnothing(psi_in) & !isnothing(psi_in_l) & !isnothing(psi_in_r)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose)
+    else
+        throw("unimplemented")
+    end
+    return mu
 end
 
 function kpm_2d!(

@@ -26,6 +26,12 @@ Calculate DOS and its energy derivatives (by setting `dE_order`) at zero energy.
 """
 function dos0 end
 
+"""
+$(METHODLIST)
+
+Calculate DOS at a given energy.
+"""
+function dos_single end
 
 
 function dos(
@@ -105,6 +111,18 @@ function dos(
 
     rhoE_full[idx] = maybe_to_host(rhoE)
     return E_grid, rhoE_full
+end
+
+
+function dos_single(μ, H_rescale_factor, E; NC, kernel=JacksonKernel, dE_order=0)
+    a = H_rescale_factor
+    hgn = kernel.(0:(NC-1), NC) .* hn.(0:(NC-1))
+    n_grid = collect(0:(NC - 1))
+    rhoE = chebyshev_lin_trans(E / a, n_grid, μ .* hgn)
+
+    denom = @. (a*pi*sqrt(1-(E / a)^2))
+    rhoE /= denom
+    return rhoE
 end
 
 function dos0(

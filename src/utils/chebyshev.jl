@@ -7,6 +7,10 @@ function chebyshevT_xn(x_grid::Array{Float64, 1}, n_grid::Array{Int64, 1})
     return chebyshevT.(transpose(n_grid), x_grid)
 end
 
+function chebyshevT_xn(x::Float64, n_grid::Array{Int64, 1})
+    return chebyshevT.(transpose(n_grid), x)
+end
+
 function chebyshevT_xn(x_grid::CuArray{Float64, 1}, n_grid::CuArray{Int64, 1})
     Nx = length(x_grid)
     Nn = length(n_grid)

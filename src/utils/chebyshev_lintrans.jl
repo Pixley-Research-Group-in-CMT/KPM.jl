@@ -1,3 +1,10 @@
+function chebyshev_lin_trans(x::Number, n_grid::Array, mu_tilde::Array)
+    T_xn = chebyshevT_xn(x, n_grid)
+    return first(T_xn * mu_tilde)
+end
+
+
+
 function chebyshev_lin_trans(x_grid::Array, n_grid::Array, mu_tilde::Array)
     Nx = length(x_grid)
     Nn = length(n_grid)

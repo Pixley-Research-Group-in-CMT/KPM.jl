@@ -13,7 +13,7 @@ for each direction.
 """
 function mu2D_apply_kernel_and_h(mu, NC::Int64, kernel; dims::Array=[1, 2])
     μtilde = maybe_to_device(complex(copy(mu)))
-    println("size of mu: ", size(μtilde))
+    #println("size of mu: ", size(μtilde))
     if length(dims) == 0
         return μtilde
     end
@@ -42,7 +42,7 @@ No mutate version, takes more memory
 """
 function mu2D_apply_kernel_and_h_no_mutate(mu, NC::Int64, kernel; dims::Array=[1, 2])
     μtilde = maybe_to_device(complex(copy(mu)))
-    println("size of mu: ", size(μtilde))
+    #println("size of mu: ", size(μtilde))
     if length(dims) == 0
         return μtilde
     end

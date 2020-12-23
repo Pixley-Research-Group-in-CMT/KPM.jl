@@ -148,3 +148,9 @@ function broadcast_dot_1d_1d!(target::CuArray,
     target .+= beta
     return nothing
 end
+
+
+# Pointing
+r_i(n) = mod(n - 1, 3) + 1
+r_ip(n) = mod(n - 2, 3) + 1
+r_ipp(n) = mod(n - 3, 3) + 1

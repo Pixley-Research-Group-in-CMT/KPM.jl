@@ -297,7 +297,7 @@ end
 
 
 function kpm_2d(
-                H, Ja, Jb,
+                H, Jα, Jβ,
                 NC::Int64, NR::Int64, NH::Int64;
                 psi_in=nothing,
                 psi_in_l=nothing,

@@ -2,7 +2,6 @@ using CUDA
 #TODO doc
 chebyshevT(n::Integer,x) = @. cos(n*acos(x))
 chebyshevT_cu(n::Int64, x) = CUDA.cos(n * CUDA.acos(x))
-chebyshevT_cu(n::Int64, x) = CUDA.cos(n * CUDA.acos(x))
 function chebyshevT_xn(x_grid::Array{Float64, 1}, n_grid::Array{Int64, 1})
     return chebyshevT.(transpose(n_grid), x_grid)
 end

@@ -1,5 +1,6 @@
 using DocStringExtensions
 using ProgressBars
+using Zygote
 include("dc_cond_util.jl")
 
 """
@@ -38,7 +39,7 @@ function dc_cond_single end
 
 
 
-function d_dc_cond(μ, a::Float64; E_grid=nothing, NC::Integer=0, kernel=JacksonKernel)
+function d_dc_cond_old(μ, a::Float64; E_grid=nothing, NC::Integer=0, kernel=JacksonKernel)
     μ=complex(μ)
     μ=maybe_to_device(μ) # temporary
 
@@ -73,12 +74,12 @@ function d_dc_cond(μ, a::Float64; E_grid=nothing, NC::Integer=0, kernel=Jackson
     return E_grid, dσE_full
 end
 
-function d_dc_cond_single(μ, a::Float64, E::Float64; NC::Integer=0, kernel=JacksonKernel)
-    # TODO how to share some of the code with other methods?
-    @assert (abs(E)<a) "energy E=$(E) is out of range ($(a))."
-    
-    μ = complex(μ)
 
+d_dc_cond(μ, a::Float64, E::Float64; kwargs...) = d_dc_cond(μ, a, [E]; kwargs...)
+
+function d_dc_cond(μ, a::Float64, E::Array{Float64, 1}; NC::Integer=0, kernel=JacksonKernel, dE_order=0)
+    # TODO how to share some of the code with other methods?
+    
     if (NC==0)
         # if not specified, take full
         NC = size(μ)[1]
@@ -88,13 +89,28 @@ function d_dc_cond_single(μ, a::Float64, E::Float64; NC::Integer=0, kernel=Jack
         NC = min(size(μ)[1],NC)
     end
 
-    dσE = 0.0 + 0im
+    dσE = similar(E, Float64) * 0
 
     #process μtilde
-    μtilde = mu2D_apply_kernel_and_h_no_mutate(μ, NC, kernel)
+    μtilde = mu2D_apply_kernel_and_h(μ, NC, kernel)
+    
+    f(x) = _d_dc_cond_single(μtilde, a, x, NC)
+    g(x) = real(Zygote.forwarddiff(f, x))
+    for dE_order_i = 1:dE_order
+        g = real ∘ g'
+    end
+
+    idx = abs.(E) .< abs(a)
+    dσE[idx] .= real(g.(E[idx]))
+    return dσE
+
+end
+
+
+function _d_dc_cond_single(μtilde, a::Float64, E, NC::Int64)
 
     ϵ = E / a
-    dσE = Γnmμnmαβ(μtilde, ϵ, NC) / ((1-ϵ^2)^2) / (a^2)
+    dσE = real(Γnmμnmαβ(μtilde, ϵ, NC) / ((1-ϵ^2)^2) / (a^2))
 
     return dσE
 end

@@ -1,8 +1,8 @@
 using CUDA
 #TODO doc
-chebyshevT(n::Integer,x::Union{Float64, ComplexF64}) = @. cos(n*acos(x))
-chebyshevT_cu(n::Int64, x::Float64) = CUDA.cos(n * CUDA.acos(x))
-chebyshevT_cu(n::Int64, x::ComplexF64) = CUDA.cos(n * CUDA.acos(x))
+chebyshevT(n::Integer,x) = @. cos(n*acos(x))
+chebyshevT_cu(n::Int64, x) = CUDA.cos(n * CUDA.acos(x))
+chebyshevT_cu(n::Int64, x) = CUDA.cos(n * CUDA.acos(x))
 function chebyshevT_xn(x_grid::Array{Float64, 1}, n_grid::Array{Int64, 1})
     return chebyshevT.(transpose(n_grid), x_grid)
 end

@@ -5,9 +5,9 @@ utility functions for conductivity
 """
 Calculate Γnm. Details see Garcia et.al, PRL 114, 116602 (2015)
 """
-Γnm(n::Int64,m::Int64,ε::Float64) = ((ε - 1.0im * m * sqrt(1 - ε^2)) * exp(1.0im * m * acos(ε)) * chebyshevT(n, ε) +
+Γnm(n::Int64,m::Int64,ε) = ((ε - 1.0im * m * sqrt(1 - ε^2)) * exp(1.0im * m * acos(ε)) * chebyshevT(n, ε) +
                                      (ε + 1.0im * n * sqrt(1 - ε^2)) * exp(-1.0im * n * acos(ε)) * chebyshevT(m, ε))
-Γnm_cu(n::Int64,m::Int64,ε::Float64) = ((ε - 1.0im * m * sqrt(1 - ε^2)) * exp(1.0im * m * CUDA.acos(ε)) * chebyshevT_cu(n, ε)+
+Γnm_cu(n::Int64,m::Int64,ε) = ((ε - 1.0im * m * sqrt(1 - ε^2)) * exp(1.0im * m * CUDA.acos(ε)) * chebyshevT_cu(n, ε)+
                                         (ε + 1.0im * n * sqrt(1 - ε^2)) * exp(-1.0im * n * CUDA.acos(ε)) * chebyshevT_cu(m, ε))
 
 

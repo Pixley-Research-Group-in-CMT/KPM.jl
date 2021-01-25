@@ -1,6 +1,9 @@
-function chebyshev_lin_trans(x::Number, n_grid::Array, mu_tilde::Array)
+function chebyshev_lin_trans(x::Real, n_grid::Array, mu_tilde::Array)
+    #@assert length(n_grid) == length(mu_tilde)
     T_xn = chebyshevT_xn(x, n_grid)
-    return first(T_xn * mu_tilde)
+    res = T_xn * mu_tilde
+    #@assert length(res) == 1
+    return sum(res)
 end
 
 

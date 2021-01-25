@@ -107,7 +107,8 @@ function d_dc_cond(μ, a::Float64, E::Array{Float64, 1}; NC::Integer=0, kernel=J
 end
 
 
-function _d_dc_cond_single(μtilde, a::Float64, E, NC::Int64)
+function _d_dc_cond_single(μtilde, H_rescale_factor::Float64, E, NC::Int64)
+    a = H_rescale_factor
 
     ϵ = E / a
     dσE = real(Γnmμnmαβ(μtilde, ϵ, NC) / ((1-ϵ^2)^2) / (a^2))

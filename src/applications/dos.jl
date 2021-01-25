@@ -1,5 +1,6 @@
 using DocStringExtensions
 using ProgressBars
+using Zygote
 
 """
 $(METHODLIST)
@@ -26,13 +27,6 @@ Calculate DOS and its energy derivatives (by setting `dE_order`) at zero energy.
 """
 function dos0 end
 
-"""
-$(METHODLIST)
-
-Calculate DOS at a given energy.
-"""
-function dos_single end
-
 
 function dos(
              H;
@@ -42,12 +36,13 @@ function dos(
              N_tilde::Int64=0,
              E_range=nothing,
              kernel = JacksonKernel,
-             fix_normalization = 0
+             fix_normalization = 0,
+             dE_order=0
             )
     H_rescale_factor, H_norm = normalizeH(H; fixed_a=fix_normalization)
     μ = kpm_1d(H_norm, NC, NR)
 
-    return dos(μ, H_rescale_factor; E_grid=E_grid, E_range=E_range, N_tilde=N_tilde, kernel=kernel, NC=NC)
+    return dos(μ, H_rescale_factor; E_grid=E_grid, E_range=E_range, N_tilde=N_tilde, kernel=kernel, NC=NC, dE_order=dE_order)
 end
 
 
@@ -57,7 +52,8 @@ function dos(
              N_tilde::Int64=0,
              E_range=nothing,
              NC::Int64=0,
-             kernel = JacksonKernel,
+             kernel=JacksonKernel,
+             dE_order=0
             )
     @assert (length(size(μ)) == 1) "The input need to be 1D array"
     μ = maybe_to_device(μ)
@@ -98,27 +94,39 @@ function dos(
     idx = (abs.(E_grid) .< abs(a))
     E_grid_inrange = maybe_to_device(E_grid[idx])
 
-    n_grid = maybe_to_device(collect(0:(NC-1)))
 
     hgn = maybe_to_device(kernel.(0:(NC-1),NC) .* hn.(0:(NC-1)))
+    μtilde = μ .* hgn
 
-    rhoE = chebyshev_lin_trans(E_grid_inrange / a,
-                               n_grid,
-                               μ .* hgn)
+    if dE_order == 0
+        n_grid = maybe_to_device(collect(0:(NC-1)))
+        rhoE = chebyshev_lin_trans(E_grid_inrange / a,
+                                   n_grid,
+                                   μtilde)
 
-    denom = @. (a*pi*sqrt(1-(E_grid_inrange/a)^2))
-    rhoE ./= denom
+        denom = @. (a*pi*sqrt(1-(E_grid_inrange/a)^2))
+        rhoE ./= denom
+    else
+        f(x) = _dos_single(μtilde, a, x, NC)
+        g(x) = real(Zygote.forwarddiff(f, x))
+        @assert (dE_order_i <= 1) "There is a Zygote support problem for higher order derivative. You can use `KPM.dos0(; dE_order=2)` for second derivative at E=0 temporarily."
+        for dE_order_i = 1:dE_order
+            g = real ∘ g'
+        end
+        rhoE = g.(E_grid_inrange)
+    end
 
     rhoE_full[idx] = maybe_to_host(rhoE)
     return E_grid, rhoE_full
 end
 
 
-function dos_single(μ, H_rescale_factor, E; NC, kernel=JacksonKernel, dE_order=0)
+function _dos_single(μtilde, H_rescale_factor, E::Number, NC)
+    ### MUST BE NON-MUTATING ###
     a = H_rescale_factor
-    hgn = kernel.(0:(NC-1), NC) .* hn.(0:(NC-1))
+    #hgn = kernel.(0:(NC-1), NC) .* hn.(0:(NC-1))
     n_grid = collect(0:(NC - 1))
-    rhoE = chebyshev_lin_trans(E / a, n_grid, μ .* hgn)
+    rhoE = chebyshev_lin_trans(E / a, n_grid, μtilde)
 
     denom = @. (a*pi*sqrt(1-(E / a)^2))
     rhoE /= denom

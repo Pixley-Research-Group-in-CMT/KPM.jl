@@ -109,7 +109,7 @@ function dos(
     else
         f(x) = _dos_single(μtilde, a, x, NC)
         g(x) = real(Zygote.forwarddiff(f, x))
-        @assert (dE_order_i <= 1) "There is a Zygote support problem for higher order derivative. You can use `KPM.dos0(; dE_order=2)` for second derivative at E=0 temporarily."
+        @assert (dE_order <= 1) "There is a Zygote support problem for higher order derivative. You can use `KPM.dos0(; dE_order=2)` for second derivative at E=0 temporarily."
         for dE_order_i = 1:dE_order
             g = real ∘ g'
         end

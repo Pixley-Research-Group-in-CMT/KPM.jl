@@ -173,6 +173,71 @@ function kpm_2d end
 
 
 
+"""
+$(METHODLIST)
+
+The simple version of tripple KPM that returns the moment.
+Calculate moments for tripple KPM. 
+
+Calculates `ψ0l * Tn3(H) * Jγ * Tn2(H) * Jβ * Tn1(H) * Jα * ψ0r`.
+When ψ0r and ψ0l are chosen to be random and identical, the output approximates
+tr(Tn3(H) Jγ Tn2(H) Jβ Tn1(H) Jα). The accuracy is ~ O(1/sqrt(NR * NH)). NC controls the
+energy resolution of the result.
+
+Output: μ, a 3D array in ComplexF64. μ[n3, n2, n1] is the momentum for 2D KPM.
+
+**ARGS**
+
+- `H`
+Hamiltonian. A sparse 2D array.
+
+- `Jα`
+Current operator. A sparse 2D array.
+
+- `Jβ`
+Current operator. A sparse 2D array.
+
+- `Jγ`
+Current operator. A sparse 2D array.
+
+- `NC`
+Integer. KPM cutoff order.
+
+- `NR`
+Integer. Number of random vectors to choose from. When skipped, understood as NR=1.
+
+- `NH`
+Integer. Dimension of H, Jα, Jβ and Jγ
+
+**KWARGS**
+
+- `psi_in_l`
+
+Passes value to ψ0l. The array is not updated. Size should be
+(NH, NR) (preferred) or (NR, NH) if set.
+
+- `psi_in_r`
+
+Passes value to ψ0r. The array is not updated. Size should be 
+(NH, NR) (preferred) or (NR, NH) if set.
+
+- `psi_in`
+
+Cannot be used together with psi_in_l and psi_in_r. Sets psi_in_l=psi_in_r=psi_in if set.
+
+- `kwargs`
+
+other kwargs in KPM_2D!
+"""
+function kpm_3d! end
+
+
+"""
+$(METHODLIST)
+
+TODO: add doc.
+"""
+function kpm_3d end
 
 
 kpm_1d(H, NC::Int64, NR::Int64; kwargs...) = kpm_1d(H, NC, NR, size(H)[1]; kwargs...)
@@ -433,4 +498,88 @@ function kpm_2d!(
 
     kpm_2d!(H, Jα, Jβ, NC, NR, NH, μ, psi_in; kwargs...)
     return nothing
+end
+### END OF ALIASES
+
+function kpm_3d!(
+                 H, Jα, Jβ, Jγ,
+                 NC::Int64, NR::Int64, NH::Int64,
+                 μ,
+                 psi_in_l,
+                 psi_in_r;
+                 arr_size::Int64=3,
+                 verbose=0,
+                 # workspace kwargs
+                 ψ0r = maybe_on_device_zeros(dt_cplx, NH, NR),
+                 JTn1HJψr = maybe_on_device_zeros(dt_cplx, NH, NR),
+                 ψall_r = maybe_on_device_zeros(dt_cplx, NH, NR, 3),
+                 ψ0l = maybe_on_device_zeros(dt_cplx, NH, NR),
+                 # workspace for sub problem (kpm_2d)
+                 sub_ψ0r = maybe_on_device_zeros(dt_cplx, NH, NR),
+                 sub_Jψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
+                 sub_JTnHJψr=maybe_on_device_zeros(dt_cplx, NH, NR),
+                 sub_ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR, 3),
+                 sub_ψ0l=maybe_on_device_zeros(dt_cplx, NH, NR),
+                 sub_ψall_l=maybe_on_device_zeros(dt_cplx, NH, NR, arr_size),
+                 sub_ψw=maybe_on_device_zeros(dt_cplx, NH, NR,)
+                )
+    println("Developing")
+
+    # do not enforce normalization
+    @assert (size(psi_in_r) == (NH, NR)) "`psi_in_r` has size $(size(psi_in_r)) but expecting $(NH), $(NR)"
+    @assert (size(psi_in_l) == (NH, NR)) "`psi_in_l` has size $(size(psi_in_l)) but expecting $(NH), $(NR)"
+    ψ0r .= maybe_to_device(psi_in_r)
+    ψ0l .= maybe_to_device(psi_in_l)
+
+    H = maybe_to_device(H)
+    Jα = maybe_to_device(Jα)
+    Jβ = maybe_to_device(Jβ)
+    Jγ = maybe_to_device(Jγ)
+
+    # generate all views
+    ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:3)
+    μ_views = map(x -> view(μ, :, :, x), 1:NC) # Jα, n1, last index
+
+
+    n1 = 1
+    mul!(ψall_r_views[n1], Jα, ψ0r)
+    kpm_2d!(
+            H, Jβ, Jγ,
+            NC, NR, NH,
+            μ_views[n1],
+            ψ0l, # psi_in_l
+            ψall_r_views[r_i(n1)]; # psi_in_r
+            arr_size=arr_size,
+            ψ0r=sub_ψ0r, Jψ0r=sub_Jψ0r, JTnHJψr=sub_JTnHJψr,
+            ψall_r=sub_ψall_r, ψ0l=sub_ψ0l, ψall_l=sub_ψall_l, ψw=sub_ψw
+           )
+
+    n1 = 2
+    mul!(ψall_r_views[n1], H, ψall_r_views[r_ip(n1)])
+    kpm_2d!(
+            H, Jβ, Jγ,
+            NC, NR, NH,
+            μ_views[n1],
+            ψ0l, # psi_in_l
+            ψall_r_views[r_i(n1)]; # psi_in_r
+            arr_size=arr_size,
+            ψ0r=sub_ψ0r, Jψ0r=sub_Jψ0r, JTnHJψr=sub_JTnHJψr,
+            ψall_r=sub_ψall_r, ψ0l=sub_ψ0l, ψall_l=sub_ψall_l, ψw=sub_ψw
+           )
+
+    for n1 in 3:NC
+        println("n1=$(n1) out of $(NC)")
+        chebyshev_iter_single(H, ψall_r, r_ipp(n1), r_ip(n1), r_i(n1))
+        kpm_2d!(
+                H, Jβ, Jγ,
+                NC, NR, NH,
+                μ_views[n1],
+                ψ0l, # psi_in_l
+                ψall_r_views[r_i(n1)]; # psi_in_r
+                arr_size=arr_size,
+                ψ0r=sub_ψ0r, Jψ0r=sub_Jψ0r, JTnHJψr=sub_JTnHJψr,
+                ψall_r=sub_ψall_r, ψ0l=sub_ψ0l, ψall_l=sub_ψall_l, ψw=sub_ψw
+               )
+    end
+
 end

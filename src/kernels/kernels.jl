@@ -60,6 +60,36 @@ function mu2D_apply_kernel_and_h_no_mutate(mu, NC::Int64, kernel; dims::Array=[1
     return μtilde
 end
 
+mu3D_apply_kernel_and_h(args...; kwargs...) = muND_apply_kernel_and_h(args...; kwargs...)
+mu3D_apply_kernel_and_h_no_mutate(args...; kwargs...) = muND_apply_kernel_and_h_no_mutate(args...; kwargs...)
+
+function muND_apply_kernel_and_h(mu, NC::Int64, kernel; dims::Array=[1,2,3])
+    μtilde = maybe_to_device(complex(copy(mu)))
+
+    kernel_vec = maybe_to_device(kernel.(0:NC-1, NC))
+    kernel_vec = kernel_vec .* hn.(0:NC-1)
+    for d in dims
+        target_shape = ones(Int64, d)
+        target_shape[d] = NC
+        μtilde .*= reshape(kernel_vec, target_shape...)
+    end
+    return μtilde
+end
+
+function muND_apply_kernel_and_h_no_mutate(mu, NC::Int64, kernel; dims::Array=[1,2,3])
+    #TODO test no mutate
+    μtilde = maybe_to_device(complex(copy(mu)))
+
+    kernel_vec = maybe_to_device(kernel.(0:NC-1, NC))
+    kernel_vec = kernel_vec .* hn.(0:NC-1)
+    for d in dims
+        target_shape = ones(Int64, d)
+        target_shape[d] = NC
+        μtilde = μtilde .* reshape(kernel_vec, target_shape...)
+    end
+    return μtilde
+end
+
 
 function mu2D_apply_kernel_and_h_dims1(mu, NC::Int64, kernel_vec)
     return mu .* kernel_vec

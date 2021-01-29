@@ -25,4 +25,4 @@ psi_in_r = psi_in_l
 
 KPM.kpm_3d!(H_norm, Jx, Jx, Jx, NC, NR, NH, Gamma, psi_in_l, psi_in_r)
 ω = 0.1
-println("cpge $(KPM.cpge(Gamma, ω))")
+println("cpge $(KPM.cpge(Gamma, NC, ω))")

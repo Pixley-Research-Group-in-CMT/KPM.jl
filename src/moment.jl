@@ -417,7 +417,9 @@ function kpm_2d!(
 
     # left starter
     ψall_l_views[1] .= ψ0l
-    println("$(typeof(ψw)), $(typeof(H)), $(typeof(ψ0l))")
+    if verbose >= 1
+        println("$(typeof(ψw)), $(typeof(H)), $(typeof(ψ0l))")
+    end
     mul!(ψw, H, ψ0l)
     ψall_l_views[2] .= ψw
 
@@ -429,7 +431,9 @@ function kpm_2d!(
     for rep in 1:(reps+1)
         m1 = (rep - 1) * arr_size + 1
         m2 = min(rep * arr_size, NC)
-        println("rep $(rep)/$(reps+1): $(m1) to $(m2)")
+        if verbose >= 1
+            println("rep $(rep)/$(reps+1): $(m1) to $(m2)")
+        end
         rep_size = m2 - m1 + 1
         μ_rep = maybe_on_device_zeros(dt_cplx, rep_size) # temp array for μ #Q: is there a better solution?
         # loop over l
@@ -568,7 +572,9 @@ function kpm_3d!(
            )
 
     for n1 in 3:NC
-        println("n1=$(n1) out of $(NC)")
+        if verbose >= 1
+            println("n1=$(n1) out of $(NC)")
+        end
         chebyshev_iter_single(H, ψall_r, r_ipp(n1), r_ip(n1), r_i(n1))
         kpm_2d!(
                 H, Jβ, Jγ,

@@ -14,5 +14,6 @@ include("moment.jl")
 
 include("applications/dos.jl")
 include("applications/conductivity.jl")
+include("applications/cpge.jl")
 
 end # module

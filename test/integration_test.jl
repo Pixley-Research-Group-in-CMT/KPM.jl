@@ -25,4 +25,15 @@ psi_in_r = psi_in_l
 
 KPM.kpm_3d!(H_norm, Jx, Jx, Jx, NC, NR, NH, Gamma, psi_in_l, psi_in_r)
 ω = 0.1
-println("cpge $(KPM.cpge(Gamma, NC, ω))")
+try
+    cpge_val = KPM.cpge(Gamma, NC, ω)
+    println("cpge $(cpge_val)")
+catch e
+    println("cpge not implemented correctly, failing by error $(e).")
+    println("test implementation of Λnmp ...")
+    @test KPM.Λnmp([1,1,1], 0.1) != nothing
+    println("test implementation of gn_A ...")
+    @test KPM.gn_A(0.1; n=1) != nothing
+    println("test implementation of Δn ...")
+    @test KPM.Δn(0.1; n=1) != nothing
+end

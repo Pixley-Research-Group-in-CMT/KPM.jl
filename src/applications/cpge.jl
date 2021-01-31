@@ -22,21 +22,28 @@ function cpge(Gamma, NC, ω; beta=1000000, E_f=0.0, kernel=JacksonKernel)
 end
 
 
-function Λnmp(nmp, ω; E_f=0.0, beta=100000)
-    # Equation 43, ω1 = -ω2 = ω.
-    # TODO
-    # Use gn_A and Δn
+function Λnmp(n, m, p, ω; E_f=0.0, beta=100000)
+    # Equation 43, ω1 = -ω2 = ω. ctrl+k w*
     # If possible, try taking λ→0 analytically.
     # Any additional option added should be included as optional keyword arguments.
+    using QuadGK # numerical integral package
+    f(ϵ) = Δn(ϵ; n) * gn_A(ϵ - ω; m) * gn_A(ϵ; p)
+    I, E = quadgk(f, -Inf, 0) # numerical integration
+    return I
 end
 
 
 function gn_A(ϵ; n)
-    # Equation 36
-    # TODO
+    # Equation 36 ctrl+k j3
+    λ = 0.0001 # ctrl+k l*
+    numerator = 2 * exp(1im * n * acos(ϵ - λ * im)) * 1im
+    denominator = sqrt(1 - (ϵ - λ * im)^2)
+    return numerator / denominator
 end
 
 function Δn(ϵ; n)
-    # Equation 35
-    # TODO
+    # Equation 35 ctrl+k D*
+    numerator = 2 * cos(n * acos(ϵ))
+    denominator = pi * sqrt(1 - ϵ^2)
+    return numerator / denominator
 end

@@ -1,3 +1,5 @@
+using QuadGK # numerical integral
+
 function cpge(Gamma, NC, ω; beta=1000000, E_f=0.0, kernel=JacksonKernel)
     # Equation 45, last term
     # Gamma is calculated using Hamiltonian that is
@@ -22,20 +24,18 @@ function cpge(Gamma, NC, ω; beta=1000000, E_f=0.0, kernel=JacksonKernel)
 end
 
 
-function Λnmp(n, m, p, ω; E_f=0.0, beta=100000)
+function Λnmp(nmp, ω; E_f=0.0, beta=100000)
     # Equation 43, ω1 = -ω2 = ω. ctrl+k w*
     # If possible, try taking λ→0 analytically.
     # Any additional option added should be included as optional keyword arguments.
-    using QuadGK # numerical integral package
-    f(ϵ) = Δn(ϵ; n) * gn_A(ϵ - ω; m) * gn_A(ϵ; p)
-    I, E = quadgk(f, -Inf, 0) # numerical integration
+    f(ϵ) = Δn(ϵ; n) * gn_A(ϵ - ω; m) * gn_A(ϵ; p)/(1 + exp(beta * (ϵ - E_f)))
+    I, E = quadgk(f, -1, E_f) # numerical integration, E is error
     return I
 end
 
 
-function gn_A(ϵ; n)
+function gn_A(ϵ; n, λ = 0.0001)
     # Equation 36 ctrl+k j3
-    λ = 0.0001 # ctrl+k l*
     numerator = 2 * exp(1im * n * acos(ϵ - λ * im)) * 1im
     denominator = sqrt(1 - (ϵ - λ * im)^2)
     return numerator / denominator

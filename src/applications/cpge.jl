@@ -23,23 +23,55 @@ function cpge(Gamma, NC, ω; beta=1000000, E_f=0.0, kernel=JacksonKernel)
     return sum(Gamma_tilde) * 1im / ω^2
 end
 
+"""
+- beta : Inf is zero temperature. beta = 1/T.
 
-function Λnmp(nmp, ω; E_f=0.0, beta=100000, δ=1e-5)
-    # _Eflb: for test purpose, lower bound of fermi energy integral
+- E_f : Fermi energy. Between -1 and 1 because Hamiltonian is normalized. 
+"""
+function Λnmp(nmp, ω; E_f=0.0, beta=Inf, δ=1e-5)
     # Equation 43, ω1 = -ω2 = ω. ctrl+k w*
-    # If possible, try taking λ→0 analytically.
-    # Any additional option added should be included as optional keyword arguments.
+    # The integral will cover [-1+δ, E_f]
+    # λ should be considerably smaller than δ to ensure the value of gn match with the λ->0
+    # but usually not be too small to avoid floating point error dominated by large number near 1
+    # future plan: if possible, try taking λ→0 analytically.
+    λ = δ / 100
+    f = fermiFunctions(E_f, beta)
+
     n, m, p = nmp
-    f(ϵ) = Δn(ϵ; n=n) * gn_A(ϵ - ω; n=m) * gn_A(ϵ; n=p)/(1 + exp(beta * (ϵ - E_f)))
-    I, E = quadgk(f, -1+δ, E_f) # numerical integration, E is error
+
+    # apply cutoffs
+    _gn_R(ϵ; n=n) = gn_R(ϵ; n=n, λ=λ, δ=δ) 
+    _gn_A(ϵ; n=n) = gn_A(ϵ; n=n, λ=λ, δ=δ)
+
+    f_rr(ϵ) = gn_R(ϵ; n=n) * gn_R(ϵ - ω; n=m) * Δn(ϵ; n=p)
+    f_ar(ϵ) = gn_R(ϵ + ω; n=n) * Δn(ϵ; n=m) * gn_A(ϵ + ω; n=p)
+    f_aa(ϵ) = Δn(ϵ; n=n) * gn_A(ϵ - ω; n=m) * gn_A(ϵ; n=p)
+    Λnmp_integrand(ϵ) = (f_rr(ϵ) + f_ar(ϵ) + f_aa(ϵ)) * f(ϵ)
+
+    I, E = quadgk(Λnmp_integrand, -1+δ, E_f) # numerical integration, E is error
     return I
 end
 
 
-function gn_A(ϵ; n, λ=0)
+function gn_A(ϵ; n, λ=1e-10, δ=1e-5)
     # Equation 36 ctrl+k j3
+    # λ is soft cutoff, δ is hard cutoff
+    if abs(1 - abs(ϵ)) < δ
+        return 0.0
+    end
     numerator = 2 * exp(1im * n * acos(ϵ - λ * im)) * 1im
     denominator = sqrt(1 - (ϵ - λ * im)^2)
+    return numerator / denominator
+end
+
+function gn_R(ϵ; n, λ=1e-10, δ=1e-5)
+    # Equation 36 ctrl+k j3
+    # λ is soft cutoff, δ is hard cutoff
+    if abs(1 - abs(ϵ)) < δ
+        return 0.0
+    end
+    numerator = - 2 * exp(- 1im * n * acos(ϵ + λ * im)) * 1im
+    denominator = sqrt(1 - (ϵ + λ * im)^2)
     return numerator / denominator
 end
 

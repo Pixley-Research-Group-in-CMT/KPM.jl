@@ -28,6 +28,7 @@ function Λnmp(nmp, ω; E_f=0.0, beta=100000)
     # Equation 43, ω1 = -ω2 = ω. ctrl+k w*
     # If possible, try taking λ→0 analytically.
     # Any additional option added should be included as optional keyword arguments.
+    n, m, p = nmp
     f(ϵ) = Δn(ϵ; n) * gn_A(ϵ - ω; m) * gn_A(ϵ; p)/(1 + exp(beta * (ϵ - E_f)))
     I, E = quadgk(f, -1, E_f) # numerical integration, E is error
     return I

@@ -1,5 +1,3 @@
-module Utils
-
 export wrapAdd, normalizeH, isNotBoundary, timestamp
 using SparseArrays, Arpack, Random
 """
@@ -22,20 +20,20 @@ end
 """
 Normalize H. If requested, allow renormalizing it to fixed value.
 """
-function normalizeH(H::SparseMatrixCSC{ComplexF64,Int64}; eps::Float64=0.1, setA::Float64=0.0)
+function normalizeH(H::SparseMatrixCSC{ComplexF64,Int64}; eps::Float64=0.1, fixed_a::Number=0.0)
     
     println("hermitian check: ")
     @assert abs(sum(H-H')) < 1e-16*sqrt(H.n)
     println("pass.")
 
-	if setA==0
+	if fixed_a==0
     es, vs = eigs(H;tol=0.001,maxiter=300)
 #	println(es)
     Emax = maximum(abs.(es))
     Emin = -Emax
     a = (Emax - Emin)/(2 - eps)
 	else
-    a = setA
+    a = fixed_a 
 	end
 
     H = H/a
@@ -54,5 +52,3 @@ function timestamp(text; t = [time(), time()], r = 0, init = false, rank=0)
 
 end
 
-
-end

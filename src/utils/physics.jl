@@ -26,9 +26,7 @@ Allow sloppy use of type as long as convertion is available, if using keyword ar
 """
 function fermiFunctions(E_f::Float64, beta::Float64)
     f(x) = fermiFunction(Float64(x), E_f, beta)
-    g(x) = (x -> 
-            (((x > E_f) + (x >= E_f)) / 2)
-           )
+    g(x) = ((x < E_f) + (x <= E_f)) / 2
     if isinf(beta)
         return g
     else

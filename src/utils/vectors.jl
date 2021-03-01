@@ -79,7 +79,7 @@ function broadcast_dot_reduce_avg_2d_1d!(target::CuArray{T, 1} where T,
                                          Vls::Array{T, 1} where {T<:CuArray{Ts, 2} where Ts},
                                          Vr::CuArray{T, 2} where T,
                                          NR::Int64, ncols::Int64)
-    target_temp = on_host_zeros(ncols)
+    target_temp = on_host_zeros(eltype(target), ncols)
     for i in 1:ncols
         target_temp[i] = dot(Vls[i], Vr) / NR
     end

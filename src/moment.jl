@@ -445,7 +445,7 @@ function kpm_2d!(
         mul!(JTnHJψr, Jβ,ψall_r_views[n])
 
         broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
-        @. μ[n, m1:m2] = μ_rep
+        μ[n, m1:m2] = maybe_to_host(μ_rep)
         ## TODO: IMPROVE THIS?
 
         # n = 2
@@ -454,7 +454,7 @@ function kpm_2d!(
         mul!(JTnHJψr, Jβ, ψall_r_views[n])
 
         broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
-        @. μ[n, m1:m2] = μ_rep
+        μ[n, m1:m2] = maybe_to_host(μ_rep)
 
         n_enum = 3:NC
         if verbose >= 1
@@ -468,7 +468,7 @@ function kpm_2d!(
             mul!(JTnHJψr, Jβ, ψall_r_views[r_i(n)])
 
             broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
-            @. μ[n, m1:m2] = μ_rep
+            μ[n, m1:m2] = maybe_to_host(μ_rep)
         end
 
         # wrap around to prepare for next

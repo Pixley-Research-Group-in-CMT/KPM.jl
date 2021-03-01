@@ -1,7 +1,7 @@
 using QuadGK # numerical integral
 using FastGaussQuadrature # numerical integral - non adaptive
 
-function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5)
+function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, Ω=0.01)
     # Equation 45, last term
     # Gamma is calculated using Hamiltonian that is
     # normalized to have energy bounded by [-1, 1]
@@ -12,6 +12,7 @@ function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5)
 
     Gamma_tilde = mu3D_apply_kernel_and_h(Gamma, NC, kernel)
 
+    # applying specified quad
     nodes, weights = gausschebyshev(NC * 8)
     quad(f) = (
                dot(weights, f.(nodes)),
@@ -19,7 +20,9 @@ function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5)
               )
 
 
-    Λnmp_all = map(nmp -> Λnmp(nmp, ω; δ=δ, E_f=E_f, beta=beta, quad=quad), Iterators.product(0:(NC-1), 0:(NC-1), 0:(NC-1)))
+    ω₁ = ω
+    ω₂ = Ω - ω
+    Λnmp_all = map(nmp -> Λnmp(nmp, ω₁, ω₂; δ=δ, E_f=E_f, beta=beta, quad=quad), Iterators.product(0:(NC-1), 0:(NC-1), 0:(NC-1)))
 
     Gamma_tilde .*= Λnmp_all
     #for n in 1:NC
@@ -39,10 +42,10 @@ end
 
 - E_f : Fermi energy. Between -1 and 1 because Hamiltonian is normalized. 
 """
-function Λnmp(nmp, ω; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->quadgk(f, -1, 1)))
-    # Equation 43, ω1 = -ω2 = ω. ctrl+k w*
-    # The integral will cover [-1+δ, E_f]
-    # λ should be considerably smaller than δ to ensure the value of gn match with the λ->0
+function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->quadgk(f, -1+δ, 1-δ)))
+    # Equation 43, Ω = ω1 + ω2, expecting Ω -> 0
+    # The integral will cover [-1+δ, 1-δ], where Fermi energy is taken care of by fermi function.
+    # λ should be much smaller than δ to ensure the value of gn match with the λ->0
     # but usually not be too small to avoid floating point error dominated by large number near 1
     # future plan: if possible, try taking λ→0 analytically.
     #λ = δ / 100
@@ -55,9 +58,9 @@ function Λnmp(nmp, ω; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->quadgk(f, 
     _gn_A(ϵ; n) = gn_A(ϵ; n=n, λ=λ, δ=δ)
     _Δn(ϵ; n) = Δn(ϵ; n=n, δ=δ)
 
-    f_rr(ϵ) = _gn_R(ϵ; n=n) * _gn_R(ϵ - ω; n=m) * _Δn(ϵ; n=p)
-    f_ar(ϵ) = _gn_R(ϵ + ω; n=n) * _Δn(ϵ; n=m) * _gn_A(ϵ + ω; n=p)
-    f_aa(ϵ) = _Δn(ϵ; n=n) * _gn_A(ϵ - ω; n=m) * _gn_A(ϵ; n=p)
+    f_rr(ϵ) = _gn_R(ϵ + ω₁ + ω₂; n=n) * _gn_R(ϵ + ω₂; n=m) * _Δn(ϵ; n=p)
+    f_ar(ϵ) = _gn_R(ϵ + ω₁; n=n) * _Δn(ϵ; n=m) * _gn_A(ϵ - ω₂; n=p)
+    f_aa(ϵ) = _Δn(ϵ; n=n) * _gn_A(ϵ - ω₁; n=m) * _gn_A(ϵ - ω₁ - ω₂; n=p)
     Λnmp_integrand(ϵ) = (f_rr(ϵ) + f_ar(ϵ) + f_aa(ϵ)) * f(ϵ)
 
     #I, E = quadgk(Λnmp_integrand, -1, E_f) # numerical integration, E is error

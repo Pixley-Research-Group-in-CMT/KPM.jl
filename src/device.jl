@@ -32,7 +32,7 @@ maybe_to_host(x::Array) = x
 maybe_to_host(x::SparseMatrixCSC) = x
 maybe_to_host(x::CuArray) = Array(x)
 maybe_to_host(x::CUSPARSE.CuSparseMatrixCSC) = SparseMatrixCSC(x)
-
+maybe_to_host(x::Number) = x
 
 @generated function maybe_on_device_rand(args...)
     if CUDA.has_cuda()

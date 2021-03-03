@@ -373,7 +373,7 @@ function kpm_2d(
                 arr_size=3,
                 verbose=0
                )
-    mu = zeros(dt_cplx, NC, NC)
+    mu = on_host_zeros(dt_cplx, NC, NC)
     if isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
         kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu; arr_size=arr_size, verbose=verbose)
     elseif !isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
@@ -438,7 +438,7 @@ function kpm_2d!(
             println("rep $(rep)/$(reps+1): $(m1) to $(m2)")
         end
         rep_size = m2 - m1 + 1
-        μ_rep = maybe_on_device_zeros(dt_cplx, rep_size) # temp array for μ #Q: is there a better solution?
+        μ_rep_all = map(n -> view(μ, n, m1:m2), 1:NC) # μ should be on host!!
         # loop over l
         chebyshev_iter(H, ψall_l_views, rep_size)
 
@@ -447,8 +447,7 @@ function kpm_2d!(
         ψall_r_views[n] .= Jψ0r
         mul!(JTnHJψr, Jβ,ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
-        μ[n, m1:m2] = maybe_to_host(μ_rep)
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
         ## TODO: IMPROVE THIS?
 
         # n = 2
@@ -456,8 +455,7 @@ function kpm_2d!(
         mul!(ψall_r_views[n], H, Jψ0r) # use initial values to calc Hψ0r
         mul!(JTnHJψr, Jβ, ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
-        μ[n, m1:m2] = maybe_to_host(μ_rep)
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
 
         n_enum = 3:NC
         if verbose >= 1
@@ -470,8 +468,7 @@ function kpm_2d!(
                                   ψall_r_views[r_i(n)])
             mul!(JTnHJψr, Jβ, ψall_r_views[r_i(n)])
 
-            broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
-            μ[n, m1:m2] = maybe_to_host(μ_rep)
+            broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
         end
 
         # wrap around to prepare for next

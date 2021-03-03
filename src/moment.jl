@@ -323,7 +323,7 @@ function kpm_1d!(
 
     α_views = [view(α_all, :, :, 1), view(α_all, :, :, 2)]
     for n=n_enum
-        chebyshev_iter_single(H, α_views[ipp], α_views[ip])
+        chebyshev_iter_single(H, α_views[ipp], α_views[ip]) # two view ver.
 
         broadcast_dot_1d_1d!((@view mu_all[:, 2n-1]),
                              α_views[ip],
@@ -397,7 +397,7 @@ function kpm_2d!(
                  JTnHJψr=maybe_on_device_zeros(dt_cplx, NH, NR),
                  ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR, 3),
                  ψ0l=maybe_on_device_zeros(dt_cplx, NH, NR),
-                 ψall_l=maybe_on_device_zeros(dt_cplx, NH, NR, arr_size),
+                 ψall_l=on_host_zeros(dt_cplx, NH, NR, arr_size),
                  ψw=maybe_on_device_zeros(dt_cplx, NH, NR),
                 )
 
@@ -413,15 +413,24 @@ function kpm_2d!(
 
     # generate all views
     ψall_l_views = map(x -> view(ψall_l, :, :, x), 1:arr_size)
+    ψall_l_views_buffered = maybe_to_device_buffer(ψall_l_views)
+    #ψall_l_views_buffered = ψall_l_views
     ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:3)
 
     # left starter
-    ψall_l_views[1] .= ψ0l
+    load_buffer!(ψall_l_views_buffered[1]) # 1 checked out
+    get_buffer(ψall_l_views_buffered[1]) .= ψ0l
+    unload_buffer!(ψall_l_views_buffered[1]) # 1 checked in
     if verbose >= 1
         println("$(typeof(ψw)), $(typeof(H)), $(typeof(ψ0l))")
     end
     mul!(ψw, H, ψ0l)
-    ψall_l_views[2] .= ψw
+    load_buffer!(ψall_l_views_buffered[2]) # 2 checked out
+    get_buffer(ψall_l_views_buffered[2]) .= ψw
+    unload_buffer!(ψall_l_views_buffered[2]) # 2 checked in
+
+    # all_l buffer / base has converged.
+    #@assert all(ψall_l_views_buffered[1].buffer_registry .== false) "all buffer unloaded"
 
     # right starter
     mul!(Jψ0r, Jα, ψ0r)
@@ -437,14 +446,17 @@ function kpm_2d!(
         rep_size = m2 - m1 + 1
         μ_rep = maybe_on_device_zeros(dt_cplx, rep_size) # temp array for μ #Q: is there a better solution?
         # loop over l
-        chebyshev_iter(H, ψall_l_views, rep_size)
+        # all_l start to fork
+        chebyshev_iter(H, ψall_l_views_buffered, rep_size)
+        # all_l has converged
+        #@assert all(ψall_l_views_buffered[1].buffer_registry .== false) "all buffer unloaded"
 
         # loop over r
         n = 1
         ψall_r_views[n] .= Jψ0r
         mul!(JTnHJψr, Jβ,ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
+        #broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views_buffered, JTnHJψr, NR, rep_size)
         μ[n, m1:m2] = maybe_to_host(μ_rep)
         ## TODO: IMPROVE THIS?
 
@@ -453,7 +465,7 @@ function kpm_2d!(
         mul!(ψall_r_views[n], H, Jψ0r) # use initial values to calc Hψ0r
         mul!(JTnHJψr, Jβ, ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
+        #broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views_buffered, JTnHJψr, NR, rep_size)
         μ[n, m1:m2] = maybe_to_host(μ_rep)
 
         n_enum = 3:NC
@@ -464,15 +476,18 @@ function kpm_2d!(
             chebyshev_iter_single(H,
                                   ψall_r_views[r_ipp(n)],
                                   ψall_r_views[r_ip(n)],
-                                  ψall_r_views[r_i(n)])
+                                  ψall_r_views[r_i(n)]) # 3 view ver
             mul!(JTnHJψr, Jβ, ψall_r_views[r_i(n)])
 
-            broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views, JTnHJψr, NR, rep_size)
+            #broadcast_dot_reduce_avg_2d_1d!(μ_rep, ψall_l_views_buffered, JTnHJψr, NR, rep_size)
             μ[n, m1:m2] = maybe_to_host(μ_rep)
         end
 
         # wrap around to prepare for next
-        chebyshev_iter_wrap(H, ψall_l_views, arr_size) #timed
+        # all_l start to fork
+        chebyshev_iter_wrap(H, ψall_l_views_buffered, arr_size) #timed
+        # all_l has converged
+        #@assert all(ψall_l_views_buffered[1].buffer_registry .== false) "all buffer unloaded"
     end
 
     return nothing
@@ -524,7 +539,7 @@ function kpm_3d!(
                  sub_JTnHJψr=maybe_on_device_zeros(dt_cplx, NH, NR),
                  sub_ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR, 3),
                  sub_ψ0l=maybe_on_device_zeros(dt_cplx, NH, NR),
-                 sub_ψall_l=maybe_on_device_zeros(dt_cplx, NH, NR, arr_size),
+                 sub_ψall_l=on_host_zeros(dt_cplx, NH, NR, arr_size),
                  sub_ψw=maybe_on_device_zeros(dt_cplx, NH, NR,)
                 )
     println("Developing")
@@ -575,7 +590,7 @@ function kpm_3d!(
         if verbose >= 1
             println("n1=$(n1) out of $(NC)")
         end
-        chebyshev_iter_single(H, ψall_r, r_ipp(n1), r_ip(n1), r_i(n1))
+        chebyshev_iter_single(H, ψall_r, r_ipp(n1), r_ip(n1), r_i(n1)) # 3 num ver
         kpm_2d!(
                 H, Jβ, Jγ,
                 NC, NR, NH,

@@ -87,6 +87,19 @@ function broadcast_dot_reduce_avg_2d_1d!(target::CuArray{T, 1} where T,
     return nothing
 end
 
+function broadcast_dot_reduce_avg_2d_1d!(target::CuArray{T, 1} where T,
+                                         Vls::Array{T, 1} where {T <: BufferedSubArray},
+                                         Vr::CuArray{T, 2} where T,
+                                         NR::Int64, ncols::Int64)
+    target_temp = on_host_zeros(eltype(target), ncols)
+    for i in 1:ncols
+        load_buffer!(Vls[i])
+        target_temp[i] = dot(get_buffer(Vls[i]), Vr) / NR
+        unload_buffer!(Vls[i])
+    end
+    target .= maybe_to_device(target_temp)
+    return nothing
+end
 
 
 """

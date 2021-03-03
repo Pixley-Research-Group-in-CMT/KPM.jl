@@ -115,7 +115,7 @@ function broadcast_dot_1d_1d!(target::CuArray,
                               beta::Number=0.0)
     target_temp = on_host_zeros(NR)
     for NRi in 1:NR
-        target_temp[NRi] = dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta
+        target_temp[NRi] = real(dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta)
     end
     target .= maybe_to_device(target_temp)
     return nothing

@@ -327,14 +327,14 @@ function kpm_1d!(
     for n=n_enum
         chebyshev_iter_single(H, α_views[ipp], α_views[ip])
 
-        broadcast_dot_1d_1d!((@view mu_all_views[2n-1]),
-                             α_views[ip],
-                             α_views[ip];
+        broadcast_dot_1d_1d!(mu_all_views[2n-1],
+                             α_view_views[ip],
+                             α_view_views[ip];
                              alpha=2.0, beta=-1.0)
 
-        broadcast_dot_1d_1d!((@view mu_all_views[2n]),
-                             α_views[ip],
-                             α_views[ipp];
+        broadcast_dot_1d_1d!(mu_all_views[2n],
+                             α_view_views[ip],
+                             α_view_views[ipp];
                              alpha=2.0, beta=-mu1)
 
         ip = 3-ip

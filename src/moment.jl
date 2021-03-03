@@ -250,7 +250,7 @@ function kpm_1d(
                 verbose=0,
                 avg_output=true
                )
-    mu_all = maybe_on_device_zeros(dt_cplx, NR, NC)
+    mu_all = on_host_zeros(dt_cplx, NR, NC) # this mu is never large enough to be worth putting on GPU
     if isnothing(psi_in)
         if (!isnothing(psi_in_l) | !isnothing(psi_in_r))
             @assert (!isnothing(psi_in_l) & !isnothing(psi_in_r)) "must set both `psi_in_l` and `psi_in_r` or neither."
@@ -308,7 +308,6 @@ function kpm_1d!(
     for NRi in 1:NR
         mu1[NRi] = dot((@view α_all[:, NRi, 1]), (@view α_all[:, NRi, 2]))
     end
-    mu1 = maybe_to_device(mu1)
 
     @. mu_all[:, 2] = mu1
 
@@ -324,17 +323,19 @@ function kpm_1d!(
     α_views = [view(α_all, :, :, 1), view(α_all, :, :, 2)]
     split_views = x -> (map(i -> view(x, :, i), 1:NR))
     α_view_views = map(split_views, α_views) # array of CuArrays or array of SubArrays
+    mu_all_views = map(i -> view(mu_all, :, i), 1:NC)
     for n=n_enum
         chebyshev_iter_single(H, α_views[ipp], α_views[ip])
 
-        broadcast_dot_1d_1d!((@view mu_all[:, 2n-1]),
+        broadcast_dot_1d_1d!((@view mu_all_views[2n-1]),
                              α_views[ip],
-                             α_views[ip], NR, 2.0, -1.0)
+                             α_views[ip];
+                             alpha=2.0, beta=-1.0)
 
-        broadcast_dot_1d_1d!((@view mu_all[:, 2n]),
+        broadcast_dot_1d_1d!((@view mu_all_views[2n]),
                              α_views[ip],
-                             α_views[ipp],
-                             NR, 2.0, -mu1)
+                             α_views[ipp];
+                             alpha=2.0, beta=-mu1)
 
         ip = 3-ip
         ipp = 3-ipp

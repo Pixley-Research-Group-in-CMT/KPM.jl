@@ -101,23 +101,23 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               NR::Int64,
                               alpha::Number=1.0,
                               beta::Number=0.0)
+    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 0")
     for NRi in 1:NR
         target[NRi] = dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta
     end
     return nothing
 end
 
-function broadcast_dot_1d_1d!(target::CuArray,
+function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               Vl::CuArray,
                               Vr::CuArray,
                               NR::Int64,
                               alpha::Number=1.0,
                               beta::Number=0.0)
-    target_temp = on_host_zeros(NR)
+    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 1")
     for NRi in 1:NR
-        target_temp[NRi] = real(dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta)
+        target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta)
     end
-    target .= maybe_to_device(target_temp)
     return nothing
 end
 
@@ -127,6 +127,7 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               NR::Int64,
                               alpha::Number,
                               beta::Union{Array, SubArray})
+    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 2")
     for NRi in 1:NR
         target[NRi] = dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta[NRi]
     end
@@ -134,30 +135,28 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
 end
 
 
-function broadcast_dot_1d_1d!(target::CuArray,
+function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               Vl::CuArray,
                               Vr::CuArray,
                               NR::Int64,
                               alpha::Number,
                               beta::CuArray)
-    target_temp = on_host_zeros(NR)
+    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 3")
     for NRi in 1:NR
-        target_temp[NRi] = real(dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha)
+        target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha) + beta[NRi]
     end
-    target .= maybe_to_device(target_temp)
-    target .+= beta
     return nothing
 end
 
-function broadcast_dot_1d_1d!(target::T,
-                              Vl_arr::Array{T},
-                              Vr_arr::Array{T},
+ArrTypes = Union{Array, SubArray, CuArray}
+function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
+                              Vl_arr::Array{T} where {T <: ArrTypes},
+                              Vr_arr::Array{T} where {T <: ArrTypes};
                               alpha::Number=1.0,
-                              beta::Union{Number, T}=0.0) where {T <: Union{Array, SubArray, CuArray}}
-    tmp_target = dot.(Vl_arr, Vr_arr)
-    tmp_target .*= alpha
-    tmp_target .+= beta
-    target .= tmp_target
+                              beta::Union{Number, T} where {T <: ArrTypes}=0.0)
+    target .= dot.(Vl_arr, Vr_arr)
+    target .*= alpha
+    target .+= maybe_to_host(beta)
     return nothing
 end
 

@@ -322,6 +322,8 @@ function kpm_1d!(
     end
 
     α_views = [view(α_all, :, :, 1), view(α_all, :, :, 2)]
+    split_views = x -> (map(i -> view(x, :, i), 1:NR))
+    α_view_views = map(split_views, α_views) # array of CuArrays or array of SubArrays
     for n=n_enum
         chebyshev_iter_single(H, α_views[ipp], α_views[ip])
 

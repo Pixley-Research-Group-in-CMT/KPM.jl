@@ -149,6 +149,17 @@ function broadcast_dot_1d_1d!(target::CuArray,
     return nothing
 end
 
+function broadcast_dot_1d_1d!(target::T,
+                              Vl_arr::Array{T},
+                              Vr_arr::Array{T},
+                              alpha::Number=1.0,
+                              beta::Union{Number, T}=0.0) where {T <: Union{Array, SubArray, CuArray}}
+    tmp_target = dot.(Vl_arr, Vr_arr)
+    tmp_target .*= alpha
+    tmp_target .+= beta
+    target .= tmp_target
+    return nothing
+end
 
 # Pointing
 r_i(n) = mod(n - 1, 3) + 1

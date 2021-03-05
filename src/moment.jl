@@ -316,7 +316,7 @@ function kpm_1d!(
 
     n_enum = 2:NChalf
     if verbose >= 1
-        println("NC = $(NC/2)")
+        println("NC/2 = $(NC/2)")
         n_enum = ProgressBar(n_enum)
     end
 

@@ -81,7 +81,7 @@ function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
                                          Vls::Array{T, 1} where {T<:CuArray{Ts, 2} where Ts},
                                          Vr::CuArray{T, 2} where T,
                                          NR::Int64, ncols::Int64)
-    target .= dot.(Vls, [Vr])
+    target .= dot.(Vls[1:ncols], [Vr])
     target ./= NR
     return nothing
 end

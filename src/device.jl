@@ -4,7 +4,11 @@ using LinearAlgebra
 using CUDA
 
 function whichcore()
-    println("KPM.jl uses CPU only. GPU support is not added yet.")
+    if CUDA.has_cuda()
+        println("GPU support for KPM.jl is experimental..")
+        return true
+    end
+    return false
 end
 whichcore()
 

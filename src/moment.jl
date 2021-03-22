@@ -1,5 +1,6 @@
 using DocStringExtensions
 using ProgressBars
+using SparseArrays
 
 
 """
@@ -248,8 +249,11 @@ function kpm_1d(
                 psi_in_r=nothing,
                 force_norm=false,
                 verbose=0,
-                avg_output=true
+                avg_output=true,
+                NR_parallel=true
                )
+    
+  
     mu_all = on_host_zeros(dt_cplx, NR, NC) # this mu is never large enough to be worth putting on GPU
     if isnothing(psi_in)
         if (!isnothing(psi_in_l) | !isnothing(psi_in_r))
@@ -258,16 +262,34 @@ function kpm_1d(
                 normalize_by_col(psi_in_l, NR)
                 normalize_by_col(psi_in_r, NR)
             end
-            kpm_1d!(H, NC, NR, NH, mu_all, psi_in_l, psi_in_r; verbose=verbose)
+            if NR_parallel
+                kpm_1d!(H, NC, NR, NH, mu_all, psi_in_l, psi_in_r; verbose=verbose)
+            else
+                for NRi = 1:NR
+                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi, :), view(psi_in_l, NRi, :), view(psi_in_r, NRi, :); verbose=verbose)
+                end
+            end
         else
-            kpm_1d!(H, NC, NR, NH, mu_all; verbose=verbose)
+            if NR_parallel
+                kpm_1d!(H, NC, NR, NH, mu_all; verbose=verbose)
+            else
+                for NRi = 1:NR
+                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi, :); verbose=verbose)
+                end
+            end
         end
     else
         @assert (isnothing(psi_in_l) & isnothing(psi_in_r)) "must either set `psi_in` or set `psi_in_l` and `psi_in_r`, but not both."
         if force_norm
             normalize_by_col(psi_in, NR)
         end
-        kpm_1d!(H, NC, NR, NH, mu_all, psi_in; verbose=verbose)
+        if NR_parallel
+            kpm_1d!(H, NC, NR, NH, mu_all, psi_in; verbose=verbose)
+        else
+            for NRi = 1:NR
+                kpm_1d!(H, NC, 1, NH, view(mu_all, NRi, :), view(psi_in, NRi, :); verbose=verbose)
+            end
+        end
     end
 
     if avg_output

@@ -266,7 +266,7 @@ function kpm_1d(
                 kpm_1d!(H, NC, NR, NH, mu_all, psi_in_l, psi_in_r; verbose=verbose)
             else
                 for NRi = 1:NR
-                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi, :), view(psi_in_l, NRi, :), view(psi_in_r, NRi, :); verbose=verbose)
+                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in_l, NRi:NRi, :), view(psi_in_r, NRi:NRi, :); verbose=verbose)
                 end
             end
         else
@@ -274,7 +274,7 @@ function kpm_1d(
                 kpm_1d!(H, NC, NR, NH, mu_all; verbose=verbose)
             else
                 for NRi = 1:NR
-                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi, :); verbose=verbose)
+                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi:NRi, :); verbose=verbose)
                 end
             end
         end
@@ -287,7 +287,7 @@ function kpm_1d(
             kpm_1d!(H, NC, NR, NH, mu_all, psi_in; verbose=verbose)
         else
             for NRi = 1:NR
-                kpm_1d!(H, NC, 1, NH, view(mu_all, NRi, :), view(psi_in, NRi, :); verbose=verbose)
+                kpm_1d!(H, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in, NRi:NRi, :); verbose=verbose)
             end
         end
     end

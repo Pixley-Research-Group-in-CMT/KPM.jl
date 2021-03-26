@@ -14,7 +14,7 @@ whichcore()
 
 @generated function maybe_to_device(x::SparseMatrixCSC{T, Int64} where T<:Number)
     if CUDA.has_cuda()
-        return :(CUSPARSE.CuSparseMatrixCSC{dt_cplx, Int64}(x))
+        return :(CUSPARSE.CuSparseMatrixCSC{dt_cplx}(x))
     else
         return :(SparseMatrixCSC{dt_cplx, Int64}(x))
     end

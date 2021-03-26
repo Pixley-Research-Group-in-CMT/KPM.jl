@@ -1,8 +1,8 @@
 module KPM
 
-dt_real = Float16
-dt_cplx = ComplexF16
-dt_num = Union{Float16, ComplexF16}
+dt_real = Float32
+dt_cplx = ComplexF32
+dt_num = Union{Float32, ComplexF32}
 
 include("device.jl")
 

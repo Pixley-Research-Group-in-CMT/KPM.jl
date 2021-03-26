@@ -12,7 +12,7 @@ function whichcore()
 end
 whichcore()
 
-@generated function maybe_to_device(x::SparseMatrixCSC{T, Int64} where {T < Number})
+@generated function maybe_to_device(x::SparseMatrixCSC{T, Int64} where T<:Number)
     if CUDA.has_cuda()
         return :(CUSPARSE.CuSparseMatrixCSC{dt_cplx, Int64}(x))
     else
@@ -21,14 +21,14 @@ whichcore()
 end
 maybe_to_device(x::CUSPARSE.CuSparseMatrixCSC) = x
 
-@generated function maybe_to_device(x::Array{T} where {T<Number})
+@generated function maybe_to_device(x::Array{T} where T<:Number)
     if CUDA.has_cuda()# && eltype(x).isbitstype
         return :(CuArray{dt_cplx}(x))
     else
         return :(Array{dt_cplx}(x))
     end
 end
-maybe_to_device(x::CuArray{T} where {T<Number}) = CuArray{dt_cplx}(x)
+maybe_to_device(x::CuArray{T} where T<:Number) = CuArray{dt_cplx}(x)
 
 maybe_to_device(x::SubArray) = x # Pushing SubArray to GPU should never happen
 

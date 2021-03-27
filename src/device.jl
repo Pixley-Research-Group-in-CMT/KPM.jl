@@ -40,7 +40,7 @@ maybe_to_host(x::Number) = x
 
 @generated function maybe_on_device_rand(args...)
     if CUDA.has_cuda()
-        return :(CUDA.rand(args...))
+        return :(maybe_to_device(rand(args...)))
     else
         return :(rand(args...))
     end

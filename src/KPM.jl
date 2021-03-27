@@ -1,9 +1,8 @@
 module KPM
-using BFloat16s
 
-dt_real = BFloat16
-dt_cplx = Complex{BFloat16}
-dt_num = Union{BFloat16, BFloat16}
+dt_real = Float16
+dt_cplx = Complex{Float16}
+dt_num = Union{Float16, Float16}
 
 include("device.jl")
 

@@ -464,7 +464,7 @@ function kpm_2d!(
         m1 = (rep - 1) * arr_size + 1
         m2 = min(rep * arr_size, NC)
         if verbose >= 1
-            println("rep $(rep)/$(reps+1): $(m1) to $(m2)")
+            println("step $(rep)/$(reps+1): $(m1) to $(m2)")
         end
         rep_size = m2 - m1 + 1
         if mn_sym

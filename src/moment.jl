@@ -515,6 +515,7 @@ function kpm_2d!(
         # apply symmetry
         for m = 1:NC
             for n = (m + 1):NC
+                μ[m, n] = real(μ[m, n])
                 μ[n, m] = μ[m, n]
             end
         end

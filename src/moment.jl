@@ -432,6 +432,12 @@ function kpm_2d!(
     ψ0r .= maybe_to_device(psi_in_r)
     ψ0l .= maybe_to_device(psi_in_l)
 
+    mn_sym = false
+    if Jα ≡ Jβ
+        mn_sym = true
+        println("Jα and Jβ are identical. using m <-> n symmetry.")
+    end
+
     H = maybe_to_device(H)
     Jα = maybe_to_device(Jα)
     Jβ = maybe_to_device(Jβ)
@@ -460,7 +466,11 @@ function kpm_2d!(
             println("rep $(rep)/$(reps+1): $(m1) to $(m2)")
         end
         rep_size = m2 - m1 + 1
-        μ_rep_all = map(n -> view(μ, n, m1:m2), 1:NC) # μ should be on host!!
+        if mn_sym
+            μ_rep_all = map(n -> view(μ, n, m1:m2), 1:m2)
+        else
+            μ_rep_all = map(n -> view(μ, n, m1:m2), 1:NC) # μ should be on host!!
+        end
         # loop over l
         chebyshev_iter(H, ψall_l_views, rep_size)
 
@@ -479,7 +489,11 @@ function kpm_2d!(
 
         broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
 
-        n_enum = 3:NC
+        if mn_sym
+            n_enum = 3:m2
+        else
+            n_enum = 3:NC
+        end
         if verbose >= 1
             n_enum = ProgressBar(n_enum)
         end
@@ -497,6 +511,14 @@ function kpm_2d!(
         chebyshev_iter_wrap(H, ψall_l_views, arr_size) #timed
     end
 
+    if mn_sym
+        # apply symmetry
+        for m = 1:NC
+            for n = (m + 1):NC
+                μ[n, m] = μ[m, n]
+            end
+        end
+    end
     return nothing
 end
 

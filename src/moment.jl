@@ -416,6 +416,7 @@ function kpm_2d!(
                  psi_in_r;
                  arr_size::Int64=3,
                  verbose=0,
+                 mn_sym=false,
                  # workspace kwargs
                  ψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
                  Jψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
@@ -432,11 +433,11 @@ function kpm_2d!(
     ψ0r .= maybe_to_device(psi_in_r)
     ψ0l .= maybe_to_device(psi_in_l)
 
-    mn_sym = false
-    if Jα ≡ Jβ
-        mn_sym = true
-        println("Jα and Jβ are identical. using m <-> n symmetry.")
-    end
+    #mn_sym = false
+    #if Jα ≡ Jβ
+    #    mn_sym = true
+    #    println("Jα and Jβ are identical. using m <-> n symmetry.")
+    #end
 
     H = maybe_to_device(H)
     Jα = maybe_to_device(Jα)

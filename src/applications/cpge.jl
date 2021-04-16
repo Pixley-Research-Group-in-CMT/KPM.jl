@@ -8,6 +8,7 @@ function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, �
     #
     # Unit of e^3/Ωħ^3
 
+    @assert (abs.(Ω/ω) < 0.1) "Ω should be much smaller than ω."
     cpge_αβγ = 0.0 + 0im
 
     Gamma_tilde = mu3D_apply_kernel_and_h(Gamma, NC, kernel)
@@ -34,7 +35,7 @@ function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, �
     #    end
     #end
    
-    return sum(Gamma_tilde) * 1im / ω^2
+    return sum(Gamma_tilde) * 1im / (ω₁ * ω₂) * Ω
 end
 
 """

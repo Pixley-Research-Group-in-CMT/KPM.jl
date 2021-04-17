@@ -1,7 +1,7 @@
 using QuadGK # numerical integral
 using FastGaussQuadrature # numerical integral - non adaptive
 
-function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, Ω=0.01)
+function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, Ω=ω/20)
     # Equation 45, last term
     # Gamma is calculated using Hamiltonian that is
     # normalized to have energy bounded by [-1, 1]

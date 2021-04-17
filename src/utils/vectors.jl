@@ -1,5 +1,5 @@
 using CUDA
-using Statistics
+using Statistics, LinearAlgebra
 
 """
 Normalize a collection of vectors in an (NH, NR) array `psi_in`,
@@ -14,6 +14,42 @@ function normalize_by_col(psi_in, NR; centering=true)
         psi_in_NRi ./= norm(psi_in_NRi)
     end
 end
+
+
+"""
+orthonormalize the column vectors of `A`. In-place.
+
+Using classical Gram-Schmit.
+
+When orthogonality is extremely important, applying the same
+method twice may help, according to
+[this note](http://stoppels.blog/posts/orthogonalization-performance).
+
+"""
+function gram_schmidt!(A)
+    i_max = size(A, 2)
+    Aviews = map(i -> view(A, :, i), 1:i_max)
+    Aviews[1] ./= norm(Aviews[1])
+    for (i, Aview) in enumerate(Aviews[2:end])
+        prev_space = @view A[:,1:i]
+        tmp = (prev_space' * Aview)
+        # allocates N for number of columns.
+
+        mul!(Aview, prev_space, tmp, -1, 1)
+        Aview ./= norm(Aview)
+    end
+end
+
+"""
+orthonormalize the column vectors of `A`. See `gram_schmidt!`, the in-place
+version for details.
+"""
+function gram_schmidt(A)
+    A = copy(A)
+    gram_schmidt!(A)
+    return A
+end
+
 
 
 """

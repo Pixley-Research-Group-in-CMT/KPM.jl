@@ -1,14 +1,16 @@
 using CUDA
+using Statistics
 
 """
 Normalize a collection of vectors in an (NH, NR) array `psi_in`,
 where each column (that is `psi_in[:, NRi]`) represent a separate
 vector.
 """
-function normalize_by_col(psi_in, NR)
+function normalize_by_col(psi_in, NR; centering=true)
     # TODO: possible GPU optimization
     for NRi in 1:NR
         psi_in_NRi = @view psi_in[:, NRi]
+        psi_in_NRi .-= (mean(psi_in_NRi) * centering)
         psi_in_NRi ./= norm(psi_in_NRi)
     end
 end

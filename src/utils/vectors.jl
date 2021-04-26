@@ -63,8 +63,10 @@ ncols: Integer, number of columns.
 function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
                                          Vls::Array{T, 1} where {T<:SubArray{Ts, 2} where Ts},
                                          Vr::Array{T, 2} where T,
-                                         NR::Int64, ncols::Int64)
-    for i in 1:ncols
+                                         NR::Int64, ncols::Int64;
+                                         NC0::Int64=1, NCstep::Int64=1
+                                        )
+    for i in NC0:NCstep:ncols
         target[i] = dot(Vls[i], Vr) / NR
     end
     return nothing
@@ -73,8 +75,10 @@ end
 function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
                                          Vls::Array{T, 1} where {T<:CuArray{Ts, 2} where Ts},
                                          Vr::CuArray{T, 2} where T,
-                                         NR::Int64, ncols::Int64)
-    target .= dot.(Vls[1:ncols], [Vr])
+                                         NR::Int64, ncols::Int64;
+                                         NC0::Int64=1, NCstep::Int64=1
+                                        )
+    target .= dot.(Vls[NC0:NCstep:ncols], [Vr])
     target ./= NR
     return nothing
 end

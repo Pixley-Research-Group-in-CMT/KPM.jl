@@ -99,6 +99,12 @@ left states to be kept in memory for each loop of right states. The time
 complexity is reduced from ``O(N\\times NC^2)`` to ``O(N\\times NC\\times arr\\_size)`` while space
 complexity is increased from ``O(N\\times NC)`` to ``O(N\\times NC\\times arr\\_size)``.
 
+- `moment_parity` : The condition enforced on μmn. Choose from `:NONE`, `:ODD` and `:EVEN`.
+`:NONE` will calculate all μmn; `:ODD` will calculate μmn such that `mod(m+n, 2)==1`;
+`:EVEN` will calculate μmn such that `mod(m+n, 2)==0`. As an example, `moment_parity=:EVEN`
+can be used when calculating longitudinal conductivity on model with
+particle-hole symmetry to save time and increase accuracy. 
+
 
 **working spaces KWARGS**: The following keyword args are simply providing working
 place arrays to avoid repetitive allocation and GC. They are automatically

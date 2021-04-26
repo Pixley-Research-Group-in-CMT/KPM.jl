@@ -55,18 +55,18 @@ end
 Dot product each column of Vls with vector Vr, save in target.
 Each view has NR replica of NH. This function take the average.
 
-target: 1D Array (n), n >= ncols.
-Vls: 1D Array of 2D views, shape (n), each view (NH, NR), where n >= ncols.
+target: 1D Array (n), n >= NCcols.
+Vls: 1D Array of 2D views, shape (n), each view (NH, NR), where n >= NCcols.
 Vr: 2D Array, shape NH, NR
-ncols: Integer, number of columns. 
+NCcols: Integer, number of columns. 
 """
 function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
                                          Vls::Array{T, 1} where {T<:SubArray{Ts, 2} where Ts},
                                          Vr::Array{T, 2} where T,
-                                         NR::Int64, ncols::Int64;
+                                         NR::Int64, NCcols::Int64;
                                          NC0::Int64=1, NCstep::Int64=1
                                         )
-    for i in NC0:NCstep:ncols
+    for i in NC0:NCstep:NCcols
         target[i] = dot(Vls[i], Vr) / NR
     end
     return nothing
@@ -75,10 +75,10 @@ end
 function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
                                          Vls::Array{T, 1} where {T<:CuArray{Ts, 2} where Ts},
                                          Vr::CuArray{T, 2} where T,
-                                         NR::Int64, ncols::Int64;
+                                         NR::Int64, NCcols::Int64;
                                          NC0::Int64=1, NCstep::Int64=1
                                         )
-    target .= dot.(Vls[NC0:NCstep:ncols], [Vr])
+    target[NC0:NCstep:NCcols] .= dot.(Vls[NC0:NCstep:NCcols], [Vr])
     target ./= NR
     return nothing
 end

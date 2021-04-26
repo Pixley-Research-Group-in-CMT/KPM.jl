@@ -393,15 +393,16 @@ function kpm_2d(
                 psi_in_l=nothing,
                 psi_in_r=nothing,
                 arr_size=3,
+                moment_parity=:NONE,
                 verbose=0
                )
     mu = on_host_zeros(dt_cplx, NC, NC)
     if isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
-        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu; arr_size=arr_size, verbose=verbose)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu; arr_size=arr_size, verbose=verbose, moment_parity=moment_parity)
     elseif !isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
-        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in; arr_size=arr_size, verbose=verbose)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in; arr_size=arr_size, verbose=verbose, moment_parity=moment_parity)
     elseif isnothing(psi_in) & !isnothing(psi_in_l) & !isnothing(psi_in_r)
-        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose, moment_parity=moment_parity)
     else
         throw("unimplemented")
     end
@@ -417,6 +418,7 @@ function kpm_2d!(
                  arr_size::Int64=3,
                  verbose=0,
                  mn_sym=false,
+                 moment_parity=false,
                  # workspace kwargs
                  ψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
                  Jψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
@@ -426,6 +428,20 @@ function kpm_2d!(
                  ψall_l=maybe_on_device_zeros(dt_cplx, NH, NR, arr_size),
                  ψw=maybe_on_device_zeros(dt_cplx, NH, NR),
                 )
+
+    if moment_parity == :NONE
+        _NC_offset = 0
+        NCstep = 1
+    elseif moment_parity == :ODD # odd means we only consider terms that mod(m-n, 2)==1 (even-odd or odd-even)
+        _NC_offset = 1
+        NCstep = 2
+    elseif moment_parity == :EVEN # even means we only consider terms that mod(m-n, 2)==0 (even-even or odd-odd)
+        _NC_offset = 0
+        NCstep = 2
+    else
+        throw(ArgumentError("moment_parity=$(moment_parity) not understood."))
+    end
+    NC0(m1, n) = mod(m1 + n + _NC_offset, NCstep) + 1
 
     # do not enforce normalization
     @assert (size(psi_in_r) == (NH, NR)) "`psi_in_r` has size $(size(psi_in_r)) but expecting $(NH), $(NR)"
@@ -480,7 +496,7 @@ function kpm_2d!(
         ψall_r_views[n] .= Jψ0r
         mul!(JTnHJψr, Jβ,ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size; NC0=NC0(m1, n), NCstep=NCstep)
         ## TODO: IMPROVE THIS?
 
         # n = 2
@@ -488,7 +504,7 @@ function kpm_2d!(
         mul!(ψall_r_views[n], H, Jψ0r) # use initial values to calc Hψ0r
         mul!(JTnHJψr, Jβ, ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size; NC0=NC0(m1, n), NCstep=NCstep)
 
         if mn_sym
             n_enum = 3:m2
@@ -505,7 +521,7 @@ function kpm_2d!(
                                   ψall_r_views[r_i(n)])
             mul!(JTnHJψr, Jβ, ψall_r_views[r_i(n)])
 
-            broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
+            broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size; NC0=NC0(m1, n), NCstep=NCstep)
         end
 
         # wrap around to prepare for next

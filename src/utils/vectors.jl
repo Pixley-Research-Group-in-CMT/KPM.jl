@@ -51,51 +51,6 @@ function gram_schmidt(A)
 end
 
 
-
-"""
-Dot product each column of Vls with vector Vr, save in target.
-
-target: 2D Array (n, NR), n >= ncols.
-Vls: 3D Array, shape (NH, NR, n), where n >= ncols.
-Vr: 2D Array, shape NH, NR
-ncols: Integer, number of columns. 
-"""
-function broadcast_dot_2d_1d!(target::Array{T, 2} where T,
-                              Vls::Array{T, 3} where T,
-                              Vr::Array{T, 2} where T,
-                              NR::Int64, ncols::Int64)
-    println("seem redundant - remove?")
-    for i in 1:ncols
-        for NRi in 1:NR
-            target[i, NRi] = dot(view(Vls, :, NRi, i), view(Vr, :, NRi))
-        end
-    end
-    return nothing
-end
-function broadcast_dot_2d_1d!(target::CuArray{T, 2} where T,
-                              Vls::CuArray{T, 3} where T,
-                              Vr::CuArray{T, 2} where T,
-                              NR::Int64, ncols::Int64)
-    #@cuda threads=(ncols, NR) broadcast_dot_2d_1d_gpu!(target, Vls, Vr, NR, ncols)
-    println("seem redundant - remove?")
-    target_temp = on_host_zeros(ncols, NR)
-    for i in 1:ncols
-        for NRi in 1:NR
-            target_temp[i, NRi] = dot(view(Vls, :, NRi, i), view(Vr, :, NRi))
-        end
-    end
-    target .= maybe_to_device(target_temp)
-    return nothing
-end
-# TODO: this is not working
-#function broadcast_dot_2d_1d_gpu!(target, Vls, Vr, NR, ncols)
-    #i = blockIdx().x
-    #NRi = blockIdx().y
-    ##individual = 
-    #@inbounds target[i, NRi] = dot(view(Vls, :, NRi, i), view(Vr, :, NRi))
-    #return nothing
-#end
-
 """
 Dot product each column of Vls with vector Vr, save in target.
 Each view has NR replica of NH. This function take the average.

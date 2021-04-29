@@ -50,7 +50,7 @@ function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->
     # but usually not be too small to avoid floating point error dominated by large number near 1
     # future plan: if possible, try taking λ→0 analytically.
     #λ = δ / 100
-    f = fermiFunctions(E_f, beta)
+    ff = fermiFunctions(E_f, beta)
 
     n, m, p = nmp
 
@@ -62,7 +62,7 @@ function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->
     f_rr(ϵ) = _gn_R(ϵ + ω₁ + ω₂; n=n) * _gn_R(ϵ + ω₂; n=m) * _Δn(ϵ; n=p)
     f_ar(ϵ) = _gn_R(ϵ + ω₁; n=n) * _Δn(ϵ; n=m) * _gn_A(ϵ - ω₂; n=p)
     f_aa(ϵ) = _Δn(ϵ; n=n) * _gn_A(ϵ - ω₁; n=m) * _gn_A(ϵ - ω₁ - ω₂; n=p)
-    Λnmp_integrand(ϵ) = (f_rr(ϵ) + f_ar(ϵ) + f_aa(ϵ)) * f(ϵ)
+    Λnmp_integrand(ϵ) = (f_rr(ϵ) + f_ar(ϵ) + f_aa(ϵ)) * ff(ϵ)
 
     #I, E = quadgk(Λnmp_integrand, -1, E_f) # numerical integration, E is error
     I, E = quad(Λnmp_integrand)
@@ -73,10 +73,10 @@ end
 function gn_A(ϵ; n, λ=1e-10, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
-    if abs(1 - abs(ϵ)) < δ
-        return 0.0
-    end
-    numerator = 2 * exp(1im * n * acos(ϵ - λ * im)) * 1im
+    #if abs(1 - abs(ϵ)) < δ
+    #    return 0.0
+    #end
+    numerator = 2im * exp(1im * n * acos(ϵ - λ * im)) 
     denominator = sqrt(1 - (ϵ - λ * im)^2)
     return numerator / denominator
 end
@@ -84,10 +84,10 @@ end
 function gn_R(ϵ; n, λ=1e-10, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
-    if abs(1 - abs(ϵ)) < δ
-        return 0.0
-    end
-    numerator = - 2 * exp(- 1im * n * acos(ϵ + λ * im)) * 1im
+    #if abs(1 - abs(ϵ)) < δ
+    #    return 0.0
+    #end
+    numerator = - 2im * exp(- 1im * n * acos(ϵ + λ * im))
     denominator = sqrt(1 - (ϵ + λ * im)^2)
     return numerator / denominator
 end

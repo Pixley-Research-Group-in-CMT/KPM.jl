@@ -1,4 +1,3 @@
-using CUDA
 
 """
 evaluate from 3 to n
@@ -6,7 +5,7 @@ evaluate from 3 to n
 separating into two function might improve performance (or not???)
 """
 function chebyshev_iter(H,
-                        ψall::Union{Array{T, 2}, CuArray{T, 2}} where T,
+                        ψall::Union{Array{T, 2}} where T,
                         n::Int64)
     for i in 3:n
         chebyshev_iter_single(H, ψall, i-2, i-1, i)
@@ -14,7 +13,7 @@ function chebyshev_iter(H,
 end
 
 function chebyshev_iter(H,
-                        ψviews::Array{T} where {T <: Union{CuArray, SubArray}},
+                        ψviews::Array{T} where {T <: Union{SubArray}},
                         n::Int64)
     for i in 3:n
         chebyshev_iter_single(H, ψviews[i-2], ψviews[i-1], ψviews[i])
@@ -24,14 +23,14 @@ end
 
 
 function chebyshev_iter_wrap(H,
-                             ψall::Union{Array{T, 2}, CuArray{T, 2}} where T,
+                             ψall::Union{Array{T, 2}} where T,
                              n::Int64)
     chebyshev_iter_single(H, ψall, n - 1, n, 1)
     chebyshev_iter_single(H, ψall, n, 1, 2)
 end
 
 function chebyshev_iter_wrap(H,
-                             ψviews::Array{T} where {T <: Union{CuArray, SubArray}},
+                             ψviews::Array{T} where {T <: Union{SubArray}},
                              n::Int64)
     chebyshev_iter_single(H, ψviews[n-1], ψviews[n], ψviews[1])
     chebyshev_iter_single(H, ψviews[n], ψviews[1], ψviews[2])
@@ -43,7 +42,7 @@ chebyshev_iter_wrap(H, ψall) = chebyshev_iter_wrap(H, ψall, size(ψall)[1])
 # num indicater ver.
 # pp, p -> pp
 function chebyshev_iter_single(H,
-                               V_all::Union{Array, SubArray, CuArray},
+                               V_all::Union{Array, SubArray},
                                i_pp_in::Int64,
                                i_p_in::Int64)
     V_p_in = @view V_all[:, :, i_p_in] # [NH, NR, indexing]
@@ -55,8 +54,8 @@ end
 # SubArray and CuArray are all pointer-like
 # V_out is V_pp
 function chebyshev_iter_single(H,
-                               V_pp_in::Union{SubArray, CuArray},
-                               V_p_in::Union{SubArray, CuArray})
+                               V_pp_in::Union{SubArray},
+                               V_p_in::Union{SubArray})
     mul!(V_pp_in, H, V_p_in, 2.0+0im, -1.0+0im)
     return nothing
 end
@@ -70,9 +69,9 @@ end
 
 # SubArray and CuArray are all pointer-like
 function chebyshev_iter_single(H,
-                               V_pp_in::Union{SubArray, CuArray},
-                               V_p_in::Union{SubArray, CuArray},
-                               V_out::Union{SubArray, CuArray})
+                               V_pp_in::Union{SubArray},
+                               V_p_in::Union{SubArray},
+                               V_out::Union{SubArray})
     V_out .= V_pp_in
     chebyshev_iter_single(H, V_out, V_p_in)
 end

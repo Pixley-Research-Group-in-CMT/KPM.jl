@@ -7,8 +7,6 @@ Calculate Γnm. Details see Garcia et.al, PRL 114, 116602 (2015)
 """
 Γnm(n::Int64,m::Int64,ε) = ((ε - 1.0im * m * sqrt(1 - ε^2)) * exp(1.0im * m * acos(ε)) * chebyshevT(n, ε) +
                                      (ε + 1.0im * n * sqrt(1 - ε^2)) * exp(-1.0im * n * acos(ε)) * chebyshevT(m, ε))
-Γnm_cu(n::Int64,m::Int64,ε) = ((ε - 1.0im * m * sqrt(1 - ε^2)) * exp(1.0im * m * CUDA.acos(ε)) * chebyshevT_cu(n, ε)+
-                                        (ε + 1.0im * n * sqrt(1 - ε^2)) * exp(-1.0im * n * CUDA.acos(ε)) * chebyshevT_cu(m, ε))
 
 
 """
@@ -28,15 +26,6 @@ function Γnmμnmαβ(μtilde::Array, ε, NC)
     return result
 end
 
-function Γnmμnmαβ(μtilde::CuArray, ε::Float64, NC::Int64)
-    l = length(ε)
-
-    temp_result = copy(μtilde) #maybe_on_device_zeros(l)
-    @cuda threads=(16, 16) blocks=(8, 8) gamma_nm_mu_nm_ab_kernel!(ε, NC, temp_result)
-    result = sum(temp_result)
-    return result
-
-end
 
 function gamma_nm_mu_nm_ab_kernel!(ε, NC, temp_result)
     index0_m = (blockIdx().x - 1) * blockDim().x + threadIdx().x

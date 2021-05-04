@@ -424,7 +424,7 @@ function kpm_2d!(
                  arr_size::Int64=3,
                  verbose=0,
                  mn_sym=false,
-                 moment_parity=false,
+                 moment_parity=:NONE,
                  # workspace kwargs
                  ψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
                  Jψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),

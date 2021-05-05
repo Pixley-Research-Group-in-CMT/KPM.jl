@@ -1,4 +1,5 @@
 using CUDA
+using Logging
 
 """
 evaluate from 3 to n
@@ -55,11 +56,24 @@ end
 # SubArray and CuArray are all pointer-like
 # V_out is V_pp
 function chebyshev_iter_single(H,
-                               V_pp_in::Union{SubArray, CuArray},
-                               V_p_in::Union{SubArray, CuArray})
+                               V_pp_in::CuArray,
+                               V_p_in::CuArray)
     mul!(V_pp_in, H, V_p_in, 2.0+0im, -1.0+0im)
     return nothing
 end
+
+## experimenting multi-threading on CPU. 
+function chebyshev_iter_single(H,
+                               V_pp_in::SubArray,
+                               V_p_in::SubArray)
+
+    Threads.@threads for i = 1:size(V_pp_in, 2)
+        @debug "i = $i on thread $(Threads.threadid())"
+        mul!(view(V_pp_in, :, i), H, view(V_p_in, :, i), 2.0+0im, -1.0+0im)
+    end
+    return nothing
+end
+
 
 # num indicater ver.
 # pp, p -> out

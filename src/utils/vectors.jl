@@ -66,7 +66,7 @@ function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
                                          NR::Int64, NCcols::Int64;
                                          NC0::Int64=1, NCstep::Int64=1
                                         )
-    for i in NC0:NCstep:NCcols
+    Threads.@threads for i in NC0:NCstep:NCcols
         target[i] = dot(Vls[i], Vr) / NR
     end
     return nothing
@@ -98,7 +98,7 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               alpha::Number=1.0,
                               beta::Number=0.0)
     println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 0")
-    for NRi in 1:NR
+    Threads.@threads for NRi in 1:NR
         target[NRi] = dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta
     end
     return nothing
@@ -124,7 +124,7 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               alpha::Number,
                               beta::Union{Array, SubArray})
     println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 2")
-    for NRi in 1:NR
+    Threads.@threads for NRi in 1:NR
         target[NRi] = dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta[NRi]
     end
     return nothing

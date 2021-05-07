@@ -1,6 +1,7 @@
 using DocStringExtensions
 using ProgressBars
 using SparseArrays
+using Logging
 
 
 """
@@ -481,6 +482,7 @@ function kpm_2d!(
     mul!(Jψ0r, Jα, ψ0r)
 
     reps = Integer(ceil(NC/arr_size - 1))
+
 
     for rep in 1:(reps+1)
         m1 = (rep - 1) * arr_size + 1

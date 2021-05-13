@@ -1,4 +1,15 @@
+using Polynomials
 #TODO doc
+
+function chebyshevT_poly(n::Int64)
+    n_all = zeros(n+1)
+    n_all[n+1] = 1
+    return ChebyshevT(n_all)
+end
+function chebyshevT_accurate(n::Int64, x)
+    return chebyshevT_poly(n)(x)
+end
+
 chebyshevT(n::Integer,x) = @. cos(n*acos(x))
 function chebyshevT_xn(x_grid::Array{Float64, 1}, n_grid::Array{Int64, 1})
     return chebyshevT.(transpose(n_grid), x_grid)

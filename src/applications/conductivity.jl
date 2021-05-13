@@ -119,7 +119,10 @@ function _d_dc_cond_single(μtilde, H_rescale_factor::Float64, E, NC::Int64)
     return dσE
 end
 
-
+"""
+calculate conductivity for EF=0. Only works for longitudinal cond.
+Garcia et. al. Supp eq.25.
+"""
 function dc_cond0(mu, H_rescale_factor::Number; kernel=JacksonKernel, NC::Int64=size(mu, 1))
     mu_tilde = mu2D_apply_kernel_and_h(mu[1:NC, 1:NC], NC, kernel)
     oneone = sum(mu_tilde[1:4:NC, 1:4:NC]);
@@ -128,7 +131,10 @@ function dc_cond0(mu, H_rescale_factor::Number; kernel=JacksonKernel, NC::Int64=
     threethree = sum(mu_tilde[3:4:NC, 3:4:NC]);
     return (oneone + threethree - onethree - onethree) / H_rescale_factor # is it correct to divide by H_rescale_factor?
 end
-# Garcia et. al. Supp eq.25.
+"""
+calculate conductivity for arbitrary EF. Only works for longitudinal cond.
+Garcia et. al. Supp eq.25.
+"""
 function dc_cond_single(mu, H_rescale_factor::Number, Ef::Number; kernel=JacksonKernel, NC::Int64=size(mu, 1))
     Ef_tilde = Ef / H_rescale_factor
     mu_tilde = mu2D_apply_kernel_and_h(mu[1:NC, 1:NC], NC, kernel)

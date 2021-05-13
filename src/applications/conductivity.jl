@@ -26,6 +26,8 @@ function d_dc_cond end
 $(METHODLIST)
 
 Calculate DOS and its energy derivatives (by setting `dE_order`) at zero energy.
+
+Warning: This method does not have correct normalization at the moment. 
 """
 function dc_cond0 end
 
@@ -114,4 +116,14 @@ function _d_dc_cond_single(μtilde, H_rescale_factor::Float64, E, NC::Int64)
     dσE = real(Γnmμnmαβ(μtilde, ϵ, NC) / ((1-ϵ^2)^2) / (a^2))
 
     return dσE
+end
+
+
+function dc_cond0(mu, H_rescale_factor::Number; kernel=JacksonKernel, NC::Int64=size(μ, 1))
+    mu_tilde = mu2D_apply_kernel_and_h(mu[1:NC, 1:NC], NC, kernel)
+    oneone = sum(mu_tilde[1:4:NC, 1:4:NC]);
+    onethree = sum(mu_tilde[1:4:NC, 3:4:NC]);
+    threeone = sum(mu_tilde[3:4:NC, 1:4:NC]);
+    threethree = sum(mu_tilde[3:4:NC, 3:4:NC]);
+    return (oneone + threethree - onethree - onethree) / H_rescale_factor
 end

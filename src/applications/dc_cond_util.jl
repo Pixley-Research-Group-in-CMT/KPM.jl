@@ -1,3 +1,5 @@
+using FastGaussQuadrature
+
 """
 utility functions for conductivity 
 """
@@ -38,4 +40,20 @@ function gamma_nm_mu_nm_ab_kernel!(ε, NC, temp_result)
         end
     end
     return nothing
+end
+
+"""
+`Lambda_nm` is integral of f(Ef)/(1-Ef^2)^2 * Γnm(Ef). Notice that all Ef is scaled to -1 to 1.
+
+δ is the amount around ±1 to avoid.
+"""
+function Lambda_nm(n, m, E_f; δ=1e-2, beta=Inf, grid_N=100000)
+    ff = fermiFunctions(E_f, beta)
+
+    f(x) = ff(x) / (1 - x^2)^(3/2) * Γnm(n, m, x)
+
+    x, w = gausschebyshev(grid_N);
+    idx = abs.(x).< 1-δ
+    return dot(w[idx], f.(x[idx]))
+
 end

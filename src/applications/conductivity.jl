@@ -137,7 +137,7 @@ Garcia et. al. Supp eq.25.
 """
 function dc_cond_single(mu, H_rescale_factor::Number, Ef::Number; kernel=JacksonKernel, NC::Int64=size(mu, 1))
     Ef_tilde = Ef / H_rescale_factor
-    mu_tilde = mu2D_apply_kernel_and_h(mu[1:NC, 1:NC], NC, kernel)
+    mu_tilde = maybe_to_host(mu2D_apply_kernel_and_h(mu[1:NC, 1:NC], NC, kernel))
     
     chebyT_poly_all = chebyshevT_accurate.((1:NC) .- 1, Ef_tilde)
     @debug "$(size(chebyT_poly_all)), $(size(mu_tilde))"

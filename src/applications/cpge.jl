@@ -71,9 +71,9 @@ function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->
 end
 
 function Λnmp_fast(NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, N_int=NC*2)
-    ϵ_grid = maybe_to_device(collect((1:N_int .- 0.5)/(N_int/2) .- 1))
+    ϵ_grid = maybe_to_device(collect(((1:N_int) .- 0.5)/(N_int/2) .- 1))
     h = ϵ_grid[2] - ϵ_grid[1]
-    n_grid = maybe_to_device(collect(0:(NC-1))')
+    n_grid = maybe_to_device(collect((0:(NC-1))'))
 
     # each of the following have size (N_int, NC)
     _gn_R_ϵ_pω1 = gn_R.(ϵ_grid .+ ω₁, n_grid; λ=λ, δ=δ)
@@ -84,11 +84,11 @@ function Λnmp_fast(NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, N_int
     _gn_A_ϵ_mω2 = gn_A.(ϵ_grid .- ω₂, n_grid; λ=λ, δ=δ)
     _gn_A_ϵ_mω1_mω2 = gn_A.(ϵ_grid .- ω₁ .- ω₂, n_grid; λ=λ, δ=δ)
 
-    _Δn_ϵ = Δn.(ϵ_grid, n_grid; λ=λ, δ=δ)
+    _Δn_ϵ = Δn.(ϵ_grid, n_grid; δ=δ)
     @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(N_int) x $(NC)"
 
     ff = fermiFunctions(E_f, beta)
-    _ff_ϵ = ff.(ϵ_grid, beta)
+    _ff_ϵ = ff.(ϵ_grid)
     
     # indices n, m, p
     f_rr = zeros(ComplexF64, NC, NC, NC, N_int)

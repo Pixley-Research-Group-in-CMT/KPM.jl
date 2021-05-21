@@ -69,11 +69,11 @@ function dc_long(
             if n <= NC_all[NCi]
                 ψr_views[NCi] .+= ψall_r_views[r_i(n)] .* kernel_vecs[NCi][n] .* Tn_e[n]
             end
-
-            if n == NC_all[NCi]
-                cond[NCi] = dot(view(ψr_views[NCi], :, 1:NR), Jα, view(ψr_views[NCi], :, NR+1:2*NR))
-            end
         end
+    end
+
+    for NCi in 1:length(NC_all)
+        cond[NCi] = dot(view(ψr_views[NCi], :, 1:NR), Jα, view(ψr_views[NCi], :, NR+1:2*NR))
     end
 
     return cond / H_rescale_factor / NR

@@ -3,6 +3,7 @@ using ProgressBars
 using Zygote
 using Logging 
 include("dc_cond_util.jl")
+include("dc_cond_long.jl")
 
 """
 $(METHODLIST)

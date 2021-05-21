@@ -44,7 +44,7 @@ end
 
 - E_f : Fermi energy. Between -1 and 1 because Hamiltonian is normalized. 
 """
-function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->quadgk(f, -1+δ, 1-δ)))
+function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, quad=(f->quadgk(f, -1+δ, 1-δ)))
     # Equation 43, Ω = ω1 + ω2, expecting Ω -> 0
     # The integral will cover [-1+δ, 1-δ], where Fermi energy is taken care of by fermi function.
     # λ should be much smaller than δ to ensure the value of gn match with the λ->0
@@ -70,8 +70,9 @@ function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, quad=(f->
     return I
 end
 
-function Λnmp_fast(NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, N_int=NC*2)
+function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, kernel=JacksonKernel, N_int=NC*2)
     ϵ_grid = maybe_to_device(collect(((1:N_int) .- 0.5)/(N_int/2) .- 1))
+    @debug "$(ϵ_grid)"
     h = ϵ_grid[2] - ϵ_grid[1]
     n_grid = maybe_to_device(collect((0:(NC-1))'))
 
@@ -85,32 +86,46 @@ function Λnmp_fast(NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=1e-7, N_int
     _gn_A_ϵ_mω1_mω2 = gn_A.(ϵ_grid .- ω₁ .- ω₂, n_grid; λ=λ, δ=δ)
 
     _Δn_ϵ = Δn.(ϵ_grid, n_grid; δ=δ)
+    @debug "$(_Δn_ϵ)"
+    @debug "$(_gn_R_ϵ_pω1_pω2)"
     @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(N_int) x $(NC)"
 
     ff = fermiFunctions(E_f, beta)
     _ff_ϵ = ff.(ϵ_grid)
-    
+    @debug "$(_ff_ϵ)"
+   
+    kernel_vec = kernel.(n_grid, NC)
+    kernel_vec .*= hn.(n_grid)
+
     # indices n, m, p
     f_rr = zeros(ComplexF64, NC, NC, NC, N_int)
-    f_rr .+= reshape(_gn_R_ϵ_pω1_pω2, NC, 1, 1, N_int)
+    f_rr .+= reshape(kernel_vec, NC, 1, 1, 1)
+    f_rr .*= reshape(kernel_vec, 1, NC, 1, 1)
+    f_rr .*= reshape(kernel_vec, 1, 1, NC, 1)
+    f_ar = copy(f_rr)
+    f_aa = copy(f_rr)
+    
+    f_rr .*= reshape(_gn_R_ϵ_pω1_pω2, NC, 1, 1, N_int)
     f_rr .*= reshape(_gn_R_ϵ_pω2,     1, NC, 1, N_int)
     f_rr .*= reshape(_Δn_ϵ,           1, 1, NC, N_int)
 
-    f_ar = zeros(ComplexF64, NC, NC, NC, N_int)
-    f_ar .+= reshape(_gn_R_ϵ_pω1, NC, 1, 1, N_int)
+    f_ar .*= reshape(_gn_R_ϵ_pω1, NC, 1, 1, N_int)
     f_ar .*= reshape(_Δn_ϵ,       1, NC, 1, N_int)
     f_ar .*= reshape(_gn_A_ϵ_mω2, 1, 1, NC, N_int)
 
-    f_aa = zeros(ComplexF64, NC, NC, NC, N_int)
     f_aa .*= reshape(_Δn_ϵ,           NC, 1, 1, N_int)
-    f_aa .+= reshape(_gn_A_ϵ_mω1,     1, NC, 1, N_int)
+    f_aa .*= reshape(_gn_A_ϵ_mω1,     1, NC, 1, N_int)
     f_aa .*= reshape(_gn_A_ϵ_mω1_mω2, 1, 1, NC, N_int)
+    @debug "$(f_aa)"
+    @debug "$(f_ar)"
+    @debug "$(f_rr)"
+   
 
-    return dropdims(sum((f_rr .+ f_ar .+ f_aa) .* reshape(_ff_ϵ, 1, 1, 1, N_int); dims=4); dims=4) * h
+    return vec(sum((f_rr .+ f_ar .+ f_aa) .* reshape(_ff_ϵ, 1, 1, 1, N_int) .* reshape(Gamma, NC, NC, NC, 1); dims=[1,2,3]))
 end
 
 
-function gn_A(ϵ, n; λ=1e-10, δ=1e-5)
+function gn_A(ϵ, n; λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
     #if abs(1 - abs(ϵ)) < δ
@@ -121,7 +136,7 @@ function gn_A(ϵ, n; λ=1e-10, δ=1e-5)
     return numerator / denominator
 end
 
-function gn_R(ϵ, n; λ=1e-10, δ=1e-5)
+function gn_R(ϵ, n; λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
     #if abs(1 - abs(ϵ)) < δ
@@ -134,9 +149,9 @@ end
 
 function Δn(ϵ, n; δ=1e-5)
     # Equation 35 ctrl+k D*
-    if abs(1 - abs(ϵ)) < δ
-        return 0.0
-    end
+    #if abs(1 - abs(ϵ)) < δ
+    #    return 0.0
+    #end
     numerator = 2 * cos(n * acos(ϵ))
     denominator = pi * sqrt(1 - ϵ^2)
     return numerator / denominator

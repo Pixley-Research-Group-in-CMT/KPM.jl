@@ -65,14 +65,14 @@ function dc_long(
                               ψall_r_views[r_ipp(n)],
                               ψall_r_views[r_ip(n)],
                               ψall_r_views[r_i(n)])
-        for NCi in 1:length(NC_all)
+        Threads.@threads for NCi in 1:length(NC_all)
             if n <= NC_all[NCi]
                 ψr_views[NCi] .+= ψall_r_views[r_i(n)] .* kernel_vecs[NCi][n] .* Tn_e[n]
             end
         end
     end
 
-    for NCi in 1:length(NC_all)
+    Threads.@threads for NCi in 1:length(NC_all)
         cond[NCi] = dot(view(ψr_views[NCi], :, 1:NR), Jα, view(ψr_views[NCi], :, NR+1:2*NR))
     end
 

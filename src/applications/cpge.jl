@@ -142,33 +142,24 @@ end
 function gn_A(ϵ, n, λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
-    if abs(ϵ) > 1-δ
-        return ϵ * 0
-    end
     numerator = 2im * exp(1im * n * acos(ϵ - λ * im)) 
     denominator = sqrt(1 - (ϵ - λ * im)^2)
-    return numerator / denominator
+    return numerator / denominator * (abs(ϵ) < 1-δ)
 end
 
 function gn_R(ϵ, n, λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
-    if abs(ϵ) > 1-δ
-        return ϵ * 0
-    end
     numerator = - 2im * exp(- 1im * n * acos(ϵ + λ * im))
     denominator = sqrt(1 - (ϵ + λ * im)^2)
-    return numerator / denominator
+    return numerator / denominator * (abs(ϵ) < 1-δ)
 end
 
 function Δn(ϵ, n, δ=1e-5)
     # Equation 35 ctrl+k D*
-    if abs(ϵ) > 1-δ
-        return ϵ * 0
-    end
     numerator = 2 * cos(n * acos(ϵ))
     denominator = pi * sqrt(1 - ϵ^2)
-    return numerator / denominator
+    return numerator / denominator * (abs(ϵ) < 1-δ)
 end
 
 

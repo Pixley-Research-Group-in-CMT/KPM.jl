@@ -70,13 +70,14 @@ function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, quad=(f->q
     return I
 end
 
-function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, kernel=JacksonKernel, N_int=NC*2)
-    ϵ_grid = maybe_to_device(collect(((1:N_int) .- 0.5)/(N_int/2) .- 1))
+function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, kernel=JacksonKernel, N_int=NC*2, e_range=[-1.0, 1.0])
+
+    ϵ_grid = maybe_to_device(collect((((0.5:N_int))/N_int * (e_range[2]-e_range[1]) .+ e_range[1])'))
     @debug "$(ϵ_grid)"
     h = ϵ_grid[2] - ϵ_grid[1]
-    n_grid = maybe_to_device(collect((0:(NC-1))'))
+    n_grid = maybe_to_device(collect((0:(NC-1))))
 
-    # each of the following have size (N_int, NC)
+    # each of the following have size (NC, N_int)
     _gn_R_ϵ_pω1 = gn_R.(ϵ_grid .+ ω₁, n_grid; λ=λ, δ=δ)
     _gn_R_ϵ_pω2 = gn_R.(ϵ_grid .+ ω₂, n_grid; λ=λ, δ=δ)
     _gn_R_ϵ_pω1_pω2 = gn_R.(ϵ_grid .+ ω₁ .+ ω₂, n_grid; λ=λ, δ=δ)
@@ -86,16 +87,14 @@ function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, ker
     _gn_A_ϵ_mω1_mω2 = gn_A.(ϵ_grid .- ω₁ .- ω₂, n_grid; λ=λ, δ=δ)
 
     _Δn_ϵ = Δn.(ϵ_grid, n_grid; δ=δ)
-    @debug "$(_Δn_ϵ)"
-    @debug "$(_gn_R_ϵ_pω1_pω2)"
-    @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(N_int) x $(NC)"
+    @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(NC) x $(N_int)"
 
     ff = fermiFunctions(E_f, beta)
     _ff_ϵ = ff.(ϵ_grid)
-    @debug "$(_ff_ϵ)"
    
     kernel_vec = kernel.(n_grid, NC)
     kernel_vec .*= hn.(n_grid)
+    @debug "size of kernel_vec is $(size(kernel_vec)), expecting $(NC)"
 
     # indices n, m, p
     f_rr = zeros(ComplexF64, NC, NC, NC, N_int)
@@ -121,16 +120,17 @@ function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, ker
     @debug "$(f_rr)"
    
 
-    return vec(sum((f_rr .+ f_ar .+ f_aa) .* reshape(_ff_ϵ, 1, 1, 1, N_int) .* reshape(Gamma, NC, NC, NC, 1); dims=[1,2,3]))
+    res = vec(sum((f_rr .+ f_ar .+ f_aa) .* reshape(_ff_ϵ, 1, 1, 1, N_int) .* reshape(Gamma, NC, NC, NC, 1); dims=[1,2,3]))
+    return (ϵ_grid, res, f_rr, f_ar, f_aa)
 end
 
 
 function gn_A(ϵ, n; λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
-    #if abs(1 - abs(ϵ)) < δ
-    #    return 0.0
-    #end
+    if abs(ϵ) > 1-δ
+        return 0.0
+    end
     numerator = 2im * exp(1im * n * acos(ϵ - λ * im)) 
     denominator = sqrt(1 - (ϵ - λ * im)^2)
     return numerator / denominator
@@ -139,9 +139,9 @@ end
 function gn_R(ϵ, n; λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
-    #if abs(1 - abs(ϵ)) < δ
-    #    return 0.0
-    #end
+    if abs(ϵ) > 1-δ
+        return 0.0
+    end
     numerator = - 2im * exp(- 1im * n * acos(ϵ + λ * im))
     denominator = sqrt(1 - (ϵ + λ * im)^2)
     return numerator / denominator
@@ -149,9 +149,9 @@ end
 
 function Δn(ϵ, n; δ=1e-5)
     # Equation 35 ctrl+k D*
-    #if abs(1 - abs(ϵ)) < δ
-    #    return 0.0
-    #end
+    if abs(ϵ) > 1-δ
+        return 0.0
+    end
     numerator = 2 * cos(n * acos(ϵ))
     denominator = pi * sqrt(1 - ϵ^2)
     return numerator / denominator

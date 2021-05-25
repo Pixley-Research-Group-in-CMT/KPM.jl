@@ -81,24 +81,18 @@ function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, ker
 
     Gamma = maybe_to_device(Gamma)
 
-    f_rr = zeros(ComplexF64, NC, NC, NC)
-    f_ar = zeros(ComplexF64, NC, NC, NC)
-    f_aa = zeros(ComplexF64, NC, NC, NC)
-    gn_ϵ = zeros(ComplexF64, NC)
-
-    res = d_cpge.([Gamma], NC, ω₁, ω₂, ϵ_grid; δ=δ, λ=λ, kernel=kernel, f_rr=f_rr, f_ar=f_ar, f_aa=f_aa, gn_ϵ=gn_ϵ)
+    res = d_cpge.([Gamma], NC, ω₁, ω₂, ϵ_grid; δ=δ, λ=λ, kernel=kernel)
     return (ϵ_grid, res)
 end
 function d_cpge(Gamma, NC, ω₁, ω₂, ϵ; δ=1e-5, λ=0.0, kernel=JacksonKernel,
                # pre-allocated arrays
-               f_rr = zeros(ComplexF64, NC, NC, NC),
-               f_ar = zeros(ComplexF64, NC, NC, NC),
-               f_aa = zeros(ComplexF64, NC, NC, NC),
-               gn_ϵ = zeros(ComplexF64, NC)
                )
     Gamma = maybe_to_device(Gamma)
 
     @debug "calculating for ϵ=$(ϵ)"
+    f_rr = zeros(ComplexF64, NC, NC, NC)
+    f_ar = zeros(ComplexF64, NC, NC, NC)
+    f_aa = zeros(ComplexF64, NC, NC, NC)
 
     n_grid = maybe_to_device(collect((0:(NC-1))))
 
@@ -118,28 +112,28 @@ function d_cpge(Gamma, NC, ω₁, ω₂, ϵ; δ=1e-5, λ=0.0, kernel=JacksonKern
     f_ar .= f_rr
     f_aa .= f_rr
     
-    gn_ϵ .= gn_R.(ϵ + ω₁ + ω₂, n_grid, λ, δ)
+    gn_ϵ = gn_R.(ϵ + ω₁ + ω₂, n_grid, λ, δ)
     f_rr .*= reshape(gn_ϵ, NC, 1, 1)
 
-    gn_ϵ .= gn_R.(ϵ .+ ω₂, n_grid, λ, δ)
+    gn_ϵ = gn_R.(ϵ .+ ω₂, n_grid, λ, δ)
     f_rr .*= reshape(gn_ϵ, 1, NC, 1)
 
     f_rr .*= reshape(_Δn_ϵ, 1, 1, NC)
 
-    gn_ϵ .= gn_R.(ϵ .+ ω₁, n_grid, λ, δ)
+    gn_ϵ = gn_R.(ϵ .+ ω₁, n_grid, λ, δ)
     f_ar .*= reshape(gn_ϵ, NC, 1, 1)
 
     f_ar .*= reshape(_Δn_ϵ, 1, NC, 1)
 
-    gn_ϵ .= gn_A.(ϵ .- ω₂, n_grid, λ, δ)
+    gn_ϵ = gn_A.(ϵ .- ω₂, n_grid, λ, δ)
     f_ar .*= reshape(gn_ϵ, 1, 1, NC)
 
     f_aa .*= reshape(_Δn_ϵ, NC, 1, 1)
 
-    gn_ϵ .= gn_A.(ϵ .- ω₁, n_grid, λ, δ)
+    gn_ϵ = gn_A.(ϵ .- ω₁, n_grid, λ, δ)
     f_aa .*= reshape(gn_ϵ, 1, NC, 1)
 
-    gn_ϵ .= gn_A.(ϵ .- ω₁ .- ω₂, n_grid, λ, δ)
+    gn_ϵ = gn_A.(ϵ .- ω₁ .- ω₂, n_grid, λ, δ)
     f_aa .*= reshape(gn_ϵ, 1, 1, NC)
 
     res = sum((f_rr + f_ar + f_aa) .* Gamma)

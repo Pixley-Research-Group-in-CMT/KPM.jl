@@ -84,7 +84,7 @@ function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, ker
     res = d_cpge.([Gamma], NC, ω₁, ω₂, ϵ_grid; δ=δ, λ=λ, kernel=kernel)
     return (ϵ_grid, res)
 end
-function d_cpge(Gamma, NC, ω₁, ω₂, ϵ; δ=1e-5, λ=0.0, kernel=JacksonKernel,
+function d_cpge(Gamma, NC, ω₁::Float64, ω₂::Float64, ϵ::Float64; δ=1e-5, λ=0.0, kernel=JacksonKernel,
                # pre-allocated arrays
                )
     Gamma = maybe_to_device(Gamma)
@@ -143,7 +143,7 @@ function gn_A(ϵ, n, λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
     if abs(ϵ) > 1-δ
-        return 0.0
+        return ϵ * 0
     end
     numerator = 2im * exp(1im * n * acos(ϵ - λ * im)) 
     denominator = sqrt(1 - (ϵ - λ * im)^2)
@@ -154,7 +154,7 @@ function gn_R(ϵ, n, λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
     if abs(ϵ) > 1-δ
-        return 0.0
+        return ϵ * 0
     end
     numerator = - 2im * exp(- 1im * n * acos(ϵ + λ * im))
     denominator = sqrt(1 - (ϵ + λ * im)^2)
@@ -164,7 +164,7 @@ end
 function Δn(ϵ, n, δ=1e-5)
     # Equation 35 ctrl+k D*
     if abs(ϵ) > 1-δ
-        return 0.0
+        return ϵ * 0
     end
     numerator = 2 * cos(n * acos(ϵ))
     denominator = pi * sqrt(1 - ϵ^2)

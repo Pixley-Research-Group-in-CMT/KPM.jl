@@ -56,9 +56,9 @@ function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, quad=(f->q
     n, m, p = nmp
 
     # apply cutoffs
-    _gn_R(ϵ; n) = gn_R(ϵ, n; λ=λ, δ=δ) 
-    _gn_A(ϵ; n) = gn_A(ϵ, n; λ=λ, δ=δ)
-    _Δn(ϵ; n) = Δn(ϵ, n; δ=δ)
+    _gn_R(ϵ; n) = gn_R(ϵ, n, λ, δ) 
+    _gn_A(ϵ; n) = gn_A(ϵ, n, λ, δ)
+    _Δn(ϵ; n) = Δn(ϵ, n, δ)
 
     f_rr(ϵ) = _gn_R(ϵ + ω₁ + ω₂; n=n) * _gn_R(ϵ + ω₂; n=m) * _Δn(ϵ; n=p)
     f_ar(ϵ) = _gn_R(ϵ + ω₁; n=n) * _Δn(ϵ; n=m) * _gn_A(ϵ - ω₂; n=p)
@@ -73,7 +73,7 @@ end
 
 
 function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, kernel=JacksonKernel, N_int=NC*2, e_range=[-1.0, 1.0])
-    ϵ_grid = maybe_to_device(collect((((0.5:N_int))/N_int * (e_range[2]-e_range[1]) .+ e_range[1])'))
+    ϵ_grid = collect((((0.5:N_int))/N_int * (e_range[2]-e_range[1]) .+ e_range[1])')
 
     ff = fermiFunctions(E_f, beta)
     _ff_ϵ = ff.(ϵ_grid)
@@ -100,7 +100,7 @@ function d_cpge(Gamma, NC, ω₁, ω₂, ϵ; δ=1e-5, λ=0.0, kernel=JacksonKern
     n_grid = maybe_to_device(collect((0:(NC-1))))
 
     # each of the following have size (NC,)
-    _Δn_ϵ = Δn.(ϵ, n_grid; δ=δ)
+    _Δn_ϵ = Δn.(ϵ, n_grid, δ)
     @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(NC)"
 
    
@@ -115,28 +115,28 @@ function d_cpge(Gamma, NC, ω₁, ω₂, ϵ; δ=1e-5, λ=0.0, kernel=JacksonKern
     f_ar .= f_rr
     f_aa .= f_rr
     
-    gn_ϵ .= gn_R.(ϵ + ω₁ + ω₂, n_grid; λ=λ, δ=δ)
+    gn_ϵ .= gn_R.(ϵ + ω₁ + ω₂, n_grid, λ, δ)
     f_rr .*= reshape(gn_ϵ, NC, 1, 1)
 
-    gn_ϵ .= gn_R.(ϵ .+ ω₂, n_grid; λ=λ, δ=δ)
+    gn_ϵ .= gn_R.(ϵ .+ ω₂, n_grid, λ, δ)
     f_rr .*= reshape(gn_ϵ, 1, NC, 1)
 
     f_rr .*= reshape(_Δn_ϵ, 1, 1, NC)
 
-    gn_ϵ .= gn_R.(ϵ .+ ω₁, n_grid; λ=λ, δ=δ)
+    gn_ϵ .= gn_R.(ϵ .+ ω₁, n_grid, λ, δ)
     f_ar .*= reshape(gn_ϵ, NC, 1, 1)
 
     f_ar .*= reshape(_Δn_ϵ, 1, NC, 1)
 
-    gn_ϵ .= gn_A.(ϵ .- ω₂, n_grid; λ=λ, δ=δ)
+    gn_ϵ .= gn_A.(ϵ .- ω₂, n_grid, λ, δ)
     f_ar .*= reshape(gn_ϵ, 1, 1, NC)
 
     f_aa .*= reshape(_Δn_ϵ, NC, 1, 1)
 
-    gn_ϵ .= gn_A.(ϵ .- ω₁, n_grid; λ=λ, δ=δ)
+    gn_ϵ .= gn_A.(ϵ .- ω₁, n_grid, λ, δ)
     f_aa .*= reshape(gn_ϵ, 1, NC, 1)
 
-    gn_ϵ .= gn_A.(ϵ .- ω₁ .- ω₂, n_grid; λ=λ, δ=δ)
+    gn_ϵ .= gn_A.(ϵ .- ω₁ .- ω₂, n_grid, λ, δ)
     f_aa .*= reshape(gn_ϵ, 1, 1, NC)
 
     res = sum((f_rr .+ f_ar .+ f_aa) .* Gamma)
@@ -144,7 +144,7 @@ function d_cpge(Gamma, NC, ω₁, ω₂, ϵ; δ=1e-5, λ=0.0, kernel=JacksonKern
 end
 
 
-function gn_A(ϵ, n; λ=0.0, δ=1e-5)
+function gn_A(ϵ, n, λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
     if abs(ϵ) > 1-δ
@@ -155,7 +155,7 @@ function gn_A(ϵ, n; λ=0.0, δ=1e-5)
     return numerator / denominator
 end
 
-function gn_R(ϵ, n; λ=0.0, δ=1e-5)
+function gn_R(ϵ, n, λ=0.0, δ=1e-5)
     # Equation 36 ctrl+k j3
     # λ is soft cutoff, δ is hard cutoff
     if abs(ϵ) > 1-δ
@@ -166,7 +166,7 @@ function gn_R(ϵ, n; λ=0.0, δ=1e-5)
     return numerator / denominator
 end
 
-function Δn(ϵ, n; δ=1e-5)
+function Δn(ϵ, n, δ=1e-5)
     # Equation 35 ctrl+k D*
     if abs(ϵ) > 1-δ
         return 0.0
@@ -175,3 +175,5 @@ function Δn(ϵ, n; δ=1e-5)
     denominator = pi * sqrt(1 - ϵ^2)
     return numerator / denominator
 end
+
+

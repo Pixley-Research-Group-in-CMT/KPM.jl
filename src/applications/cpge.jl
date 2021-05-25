@@ -70,58 +70,77 @@ function Λnmp(nmp, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, quad=(f->q
     return I
 end
 
+
+
 function d_cpge(Gamma, NC, ω₁, ω₂; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, kernel=JacksonKernel, N_int=NC*2, e_range=[-1.0, 1.0])
-
     ϵ_grid = maybe_to_device(collect((((0.5:N_int))/N_int * (e_range[2]-e_range[1]) .+ e_range[1])'))
-    @debug "$(ϵ_grid)"
-    h = ϵ_grid[2] - ϵ_grid[1]
-    n_grid = maybe_to_device(collect((0:(NC-1))))
-
-    # each of the following have size (NC, N_int)
-    _gn_R_ϵ_pω1 = gn_R.(ϵ_grid .+ ω₁, n_grid; λ=λ, δ=δ)
-    _gn_R_ϵ_pω2 = gn_R.(ϵ_grid .+ ω₂, n_grid; λ=λ, δ=δ)
-    _gn_R_ϵ_pω1_pω2 = gn_R.(ϵ_grid .+ ω₁ .+ ω₂, n_grid; λ=λ, δ=δ)
-
-    _gn_A_ϵ_mω1 = gn_A.(ϵ_grid .- ω₁, n_grid; λ=λ, δ=δ)
-    _gn_A_ϵ_mω2 = gn_A.(ϵ_grid .- ω₂, n_grid; λ=λ, δ=δ)
-    _gn_A_ϵ_mω1_mω2 = gn_A.(ϵ_grid .- ω₁ .- ω₂, n_grid; λ=λ, δ=δ)
-
-    _Δn_ϵ = Δn.(ϵ_grid, n_grid; δ=δ)
-    @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(NC) x $(N_int)"
 
     ff = fermiFunctions(E_f, beta)
     _ff_ϵ = ff.(ϵ_grid)
+    @debug "$(ϵ_grid)"
+
+    f_rr = zeros(ComplexF64, NC, NC, NC)
+    f_ar = zeros(ComplexF64, NC, NC, NC)
+    f_aa = zeros(ComplexF64, NC, NC, NC)
+    gn_ϵ = zeros(ComplexF64, NC)
+
+    res = d_cpge.([Gamma], NC, ω₁, ω₂, ϵ_grid; δ=δ, λ=λ, kernel=kernel, f_rr=f_rr, f_ar=f_ar, f_aa=f_aa, gn_ϵ=gn_ϵ)
+    return (ϵ_grid, res)
+end
+function d_cpge(Gamma, NC, ω₁, ω₂, ϵ; δ=1e-5, λ=0.0, kernel=JacksonKernel,
+               # pre-allocated arrays
+               f_rr = zeros(ComplexF64, NC, NC, NC),
+               f_ar = zeros(ComplexF64, NC, NC, NC),
+               f_aa = zeros(ComplexF64, NC, NC, NC),
+               gn_ϵ = zeros(ComplexF64, NC)
+               )
+
+    @debug "calculating for ϵ=$(ϵ)"
+
+    n_grid = maybe_to_device(collect((0:(NC-1))))
+
+    # each of the following have size (NC,)
+    _Δn_ϵ = Δn.(ϵ, n_grid; δ=δ)
+    @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(NC)"
+
    
     kernel_vec = kernel.(n_grid, NC)
     kernel_vec .*= hn.(n_grid)
     @debug "size of kernel_vec is $(size(kernel_vec)), expecting $(NC)"
 
     # indices n, m, p
-    f_rr = zeros(ComplexF64, NC, NC, NC, N_int)
-    f_rr .+= reshape(kernel_vec, NC, 1, 1, 1)
-    f_rr .*= reshape(kernel_vec, 1, NC, 1, 1)
-    f_rr .*= reshape(kernel_vec, 1, 1, NC, 1)
-    f_ar = copy(f_rr)
-    f_aa = copy(f_rr)
+    f_rr .= reshape(kernel_vec, NC, 1, 1)
+    f_rr .*= reshape(kernel_vec, 1, NC, 1)
+    f_rr .*= reshape(kernel_vec, 1, 1, NC)
+    f_ar .= f_rr
+    f_aa .= f_rr
     
-    f_rr .*= reshape(_gn_R_ϵ_pω1_pω2, NC, 1, 1, N_int)
-    f_rr .*= reshape(_gn_R_ϵ_pω2,     1, NC, 1, N_int)
-    f_rr .*= reshape(_Δn_ϵ,           1, 1, NC, N_int)
+    gn_ϵ .= gn_R.(ϵ + ω₁ + ω₂, n_grid; λ=λ, δ=δ)
+    f_rr .*= reshape(gn_ϵ, NC, 1, 1)
 
-    f_ar .*= reshape(_gn_R_ϵ_pω1, NC, 1, 1, N_int)
-    f_ar .*= reshape(_Δn_ϵ,       1, NC, 1, N_int)
-    f_ar .*= reshape(_gn_A_ϵ_mω2, 1, 1, NC, N_int)
+    gn_ϵ .= gn_R.(ϵ .+ ω₂, n_grid; λ=λ, δ=δ)
+    f_rr .*= reshape(gn_ϵ, 1, NC, 1)
 
-    f_aa .*= reshape(_Δn_ϵ,           NC, 1, 1, N_int)
-    f_aa .*= reshape(_gn_A_ϵ_mω1,     1, NC, 1, N_int)
-    f_aa .*= reshape(_gn_A_ϵ_mω1_mω2, 1, 1, NC, N_int)
-    @debug "$(f_aa)"
-    @debug "$(f_ar)"
-    @debug "$(f_rr)"
-   
+    f_rr .*= reshape(_Δn_ϵ, 1, 1, NC)
 
-    res = vec(sum((f_rr .+ f_ar .+ f_aa) .* reshape(_ff_ϵ, 1, 1, 1, N_int) .* reshape(Gamma, NC, NC, NC, 1); dims=[1,2,3]))
-    return (ϵ_grid, res, f_rr, f_ar, f_aa)
+    gn_ϵ .= gn_R.(ϵ .+ ω₁, n_grid; λ=λ, δ=δ)
+    f_ar .*= reshape(gn_ϵ, NC, 1, 1)
+
+    f_ar .*= reshape(_Δn_ϵ, 1, NC, 1)
+
+    gn_ϵ .= gn_A.(ϵ .- ω₂, n_grid; λ=λ, δ=δ)
+    f_ar .*= reshape(gn_ϵ, 1, 1, NC)
+
+    f_aa .*= reshape(_Δn_ϵ, NC, 1, 1)
+
+    gn_ϵ .= gn_A.(ϵ .- ω₁, n_grid; λ=λ, δ=δ)
+    f_aa .*= reshape(gn_ϵ, 1, NC, 1)
+
+    gn_ϵ .= gn_A.(ϵ .- ω₁ .- ω₂, n_grid; λ=λ, δ=δ)
+    f_aa .*= reshape(gn_ϵ, 1, 1, NC)
+
+    res = sum((f_rr .+ f_ar .+ f_aa) .* Gamma)
+    return res
 end
 
 

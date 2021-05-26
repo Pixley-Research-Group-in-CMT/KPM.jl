@@ -94,15 +94,18 @@ function d_cpge(Gamma, NC, ω₁::Float64, ω₂::Float64, ϵ::Float64; δ=1e-5,
 
     n_grid = collect((0:(NC-1)))
 
+    kernel_vec = kernel.(n_grid, NC)
+    kernel_vec .*= hn.(n_grid)
+    kernel_vec = maybe_to_device(kernel_vec)
+    @debug "size of kernel_vec is $(size(kernel_vec)), expecting $(NC)"
+
+    n_grid = maybe_to_device(n_grid)
+
     # each of the following have size (NC,)
     _Δn_ϵ = Δn.(ϵ, n_grid, δ)
     @debug "size of _Δn_ϵ is $(size(_Δn_ϵ)), expecting $(NC)"
 
    
-    kernel_vec = kernel.(n_grid, NC)
-    kernel_vec .*= hn.(n_grid)
-    kernel_vec = maybe_to_device(kernel_vec)
-    @debug "size of kernel_vec is $(size(kernel_vec)), expecting $(NC)"
 
     # indices n, m, p
     f_rr .= reshape(kernel_vec, NC, 1, 1)

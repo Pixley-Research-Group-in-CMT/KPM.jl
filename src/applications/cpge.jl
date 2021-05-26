@@ -92,7 +92,7 @@ function d_cpge(Gamma, NC, ω₁::Float64, ω₂::Float64, ϵ::Float64; δ=1e-5,
     @debug "calculating for ϵ=$(ϵ)"
     f_rr = maybe_on_device_zeros(ComplexF64, NC, NC, NC)
 
-    n_grid = maybe_to_device(collect((0:(NC-1))))
+    n_grid = collect((0:(NC-1)))
 
     # each of the following have size (NC,)
     _Δn_ϵ = Δn.(ϵ, n_grid, δ)
@@ -101,6 +101,7 @@ function d_cpge(Gamma, NC, ω₁::Float64, ω₂::Float64, ϵ::Float64; δ=1e-5,
    
     kernel_vec = kernel.(n_grid, NC)
     kernel_vec .*= hn.(n_grid)
+    kernel_vec = maybe_to_device(kernel_vec)
     @debug "size of kernel_vec is $(size(kernel_vec)), expecting $(NC)"
 
     # indices n, m, p

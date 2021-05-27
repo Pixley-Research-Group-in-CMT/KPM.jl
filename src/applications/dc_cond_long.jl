@@ -72,10 +72,8 @@ function dc_long(
         end
     end
 
-    Threads.@threads for NCi in 1:length(NC_all)
-        for NRi in 1:NR
-            cond[NCi, NRi] = dot(view(ψr_views[NCi], :, NRi), Jα, view(ψr_views[NCi], :, NRi + NR))
-        end
+    Threads.@threads for (NCi, NRi) in Iterators.product(1:length(NC_all), 1:NR)
+        cond[NCi, NRi] = dot(view(ψr_views[NCi], :, NRi), Jα, view(ψr_views[NCi], :, NRi + NR))
     end
 
     return cond / H_rescale_factor

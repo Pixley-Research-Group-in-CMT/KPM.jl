@@ -14,7 +14,7 @@ function dc_long(
                  ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 3),
                 )
 
-    cond = on_host_zeros(dt_cplx, length(NC_all), NR)
+    cond = on_host_zeros(dt_cplx, length(NC_all))
 
     kernel_vecs = map(NC -> kernel.(0:NC-1, NC) .* hn.(0:NC-1), NC_all)
 
@@ -72,11 +72,11 @@ function dc_long(
         end
     end
 
-    Threads.@threads for (NCi, NRi) in Iterators.product(1:length(NC_all), 1:NR)
-        cond[NCi, NRi] = dot(view(ψr_views[NCi], :, NRi), Jα, view(ψr_views[NCi], :, NRi + NR))
+    Threads.@threads for NCi in 1:length(NC_all)
+        cond[NCi] = dot(view(ψr_views[NCi], :, 1:NR), Jα, view(ψr_views[NCi], :, NR+1:2*NR))
     end
 
-    return cond / H_rescale_factor
+    return cond / H_rescale_factor / NR
 end
 
 

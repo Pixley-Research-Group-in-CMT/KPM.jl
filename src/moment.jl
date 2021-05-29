@@ -659,3 +659,36 @@ function kpm_3d!(
     end
 
 end
+
+
+function kpm_3d(
+                H, Jα, Jβ, Jγ,
+                NC::Int64, NR::Int64, NH::Int64;
+                arr_size::Int64=3,
+                verbose=0,
+                psi_in_l=nothing
+                psi_in_r=nothing
+                psi_in=nothing
+               )
+    μ = zeros(ComplexF64, NC, NC, NC)
+    if !isnothing(psi_in)
+        if (!isnothing(psi_in_l) || !isnothing(psi_in_r))
+           @warn "`psi_in_l`, `psi_in_r` and `psi_in` are simoutaneously set. Taking `psi_in` and discarding the others"
+       end
+       psi_in_l = psi_in
+       psi_in_r = psi_in
+   elseif !isnothing(psi_in_l) || !isnothing(psi_in_r)
+       if isnothing(psi_in_l) || isnothing(psi_in_r)
+           @warn "only one of `psi_in_l` and `psi_in_r` is set. Setting them as the same."
+           psi_in_l = something(psi_in_l, psi_in_r)
+           psi_in_r = psi_in_l
+       end
+   else
+       @info "Using random phase as random vector"
+       psi_in_l = exp.(2pi * 1im * rand(NH, NR));
+       KPM.normalize_by_col(psi_in_l, NR)
+       psi_in_r = psi_in_l
+   end
+
+   kpm_3d!(H, Jα, Jβ, Jγ, NC, NR, NH, μ, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose)
+end

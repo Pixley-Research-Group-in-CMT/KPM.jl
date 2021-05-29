@@ -666,8 +666,8 @@ function kpm_3d(
                 NC::Int64, NR::Int64, NH::Int64;
                 arr_size::Int64=3,
                 verbose=0,
-                psi_in_l=nothing
-                psi_in_r=nothing
+                psi_in_l=nothing,
+                psi_in_r=nothing,
                 psi_in=nothing
                )
     μ = zeros(ComplexF64, NC, NC, NC)

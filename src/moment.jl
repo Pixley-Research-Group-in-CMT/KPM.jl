@@ -691,4 +691,5 @@ function kpm_3d(
    end
 
    kpm_3d!(H, Jα, Jβ, Jγ, NC, NR, NH, μ, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose)
+   return μ
 end

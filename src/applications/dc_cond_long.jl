@@ -16,7 +16,11 @@ function dc_long(
 
     cond = on_host_zeros(dt_cplx, length(NC_all))
 
-    kernel_vecs = map(NC -> kernel.(0:NC-1, NC) .* hn.(0:NC-1), NC_all)
+    if !(typeof(kernel) <: Array)
+        kernel = [kernel, kernel]
+    end
+    kernel_vecs1 = map(NC -> kernel[1].(0:NC-1, NC) .* hn.(0:NC-1), NC_all)
+    kernel_vecs2 = map(NC -> kernel[2].(0:NC-1, NC) .* hn.(0:NC-1), NC_all)
 
     Ef_tilde = Ef / H_rescale_factor
 
@@ -35,7 +39,10 @@ function dc_long(
 
     # generate all views
     ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:3)
-    ψr_views = map(x -> view(ψr, :, :, x), 1:length(NC_all))
+    ψall_r_views_1 = map(x -> view(ψall_r, :, 1:NR, x), 1:3)
+    ψall_r_views_2 = map(x -> view(ψall_r, :, (NR+1):(2*NR), x), 1:3)
+    ψr_views_1 = map(x -> view(ψr, :, 1:NR, x), 1:length(NC_all))
+    ψr_views_2 = map(x -> view(ψr, :, (NR+1):(2*NR), x), 1:length(NC_all))
 
     # right start
     view(ψ0, :, 1:NR) .= psi_in
@@ -46,13 +53,15 @@ function dc_long(
     n = 1 # THIS IS g0, T0, etc.
     ψall_r_views[r_i(n)] .= ψ0
     for NCi in 1:length(NC_all)
-        ψr_views[NCi] .+= ψall_r_views[r_i(n)] .* kernel_vecs[NCi][n] .* Tn_e[n]
+        ψr_views_1[NCi] .+= ψall_r_views_1[r_i(n)] .* kernel_vecs1[NCi][n] .* Tn_e[n]
+        ψr_views_2[NCi] .+= ψall_r_views_2[r_i(n)] .* kernel_vecs2[NCi][n] .* Tn_e[n]
     end
 
     n = 2
     mul!(ψall_r_views[r_i(n)], H, ψall_r_views[r_ip(n)])
     for NCi in 1:length(NC_all)
-        ψr_views[NCi] .+= ψall_r_views[r_i(n)] .* kernel_vecs[NCi][n] .* Tn_e[n]
+        ψr_views_1[NCi] .+= ψall_r_views_1[r_i(n)] .* kernel_vecs1[NCi][n] .* Tn_e[n]
+        ψr_views_2[NCi] .+= ψall_r_views_2[r_i(n)] .* kernel_vecs2[NCi][n] .* Tn_e[n]
     end
 
     n_enum = 3:NC_max
@@ -67,13 +76,14 @@ function dc_long(
                               ψall_r_views[r_i(n)])
         Threads.@threads for NCi in 1:length(NC_all)
             if n <= NC_all[NCi]
-                ψr_views[NCi] .+= ψall_r_views[r_i(n)] .* kernel_vecs[NCi][n] .* Tn_e[n]
+                ψr_views_1[NCi] .+= ψall_r_views_1[r_i(n)] .* kernel_vecs1[NCi][n] .* Tn_e[n]
+                ψr_views_2[NCi] .+= ψall_r_views_2[r_i(n)] .* kernel_vecs2[NCi][n] .* Tn_e[n]
             end
         end
     end
 
     Threads.@threads for NCi in 1:length(NC_all)
-        cond[NCi] = dot(view(ψr_views[NCi], :, 1:NR), Jα, view(ψr_views[NCi], :, NR+1:2*NR))
+        cond[NCi] = dot(ψr_views_1[NCi], Jα, ψr_views_2[NCi])
     end
 
     return cond / H_rescale_factor / NR

@@ -82,7 +82,7 @@ function dc_long(
         end
     end
 
-    if avg_NR = true
+    if avg_NR
         cond = on_host_zeros(dt_cplx, length(NC_all))
         Threads.@threads for NCi in 1:length(NC_all)
             for NRi in 1:NR

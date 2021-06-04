@@ -12,9 +12,9 @@ function dc_long(
                  ψr=maybe_on_device_zeros(dt_cplx, NH, NR * 2, length(NC_all)),
                  ψ0=maybe_on_device_zeros(dt_cplx, NH, NR * 2),
                  ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 3),
+                 avg_NR=true
                 )
 
-    cond = on_host_zeros(dt_cplx, length(NC_all))
 
     if !(typeof(kernel) <: Array)
         kernel = [kernel, kernel]
@@ -82,11 +82,22 @@ function dc_long(
         end
     end
 
-    Threads.@threads for NCi in 1:length(NC_all)
-        cond[NCi] = dot(ψr_views_1[NCi], Jα, ψr_views_2[NCi])
+    if avg_NR = true
+        cond = on_host_zeros(dt_cplx, length(NC_all))
+        Threads.@threads for NCi in 1:length(NC_all)
+            for NRi in 1:NR
+                cond[NCi, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα, view(ψr_views_2[NCi], :, NRi))
+            end
+        end
+        cond ./= NR
+    else
+        cond = on_host_zeros(dt_cplx, length(NC_all), NR)
+        Threads.@threads for NCi in 1:length(NC_all)
+            cond[NCi] = dot(ψr_views_1[NCi], Jα, ψr_views_2[NCi])
+        end
     end
 
-    return cond / H_rescale_factor / NR
+    return cond / H_rescale_factor
 end
 
 

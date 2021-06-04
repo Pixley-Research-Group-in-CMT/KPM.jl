@@ -85,15 +85,15 @@ function dc_long(
     if avg_NR
         cond = on_host_zeros(dt_cplx, length(NC_all))
         Threads.@threads for NCi in 1:length(NC_all)
-            for NRi in 1:NR
-                cond[NCi, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα, view(ψr_views_2[NCi], :, NRi))
-            end
+            cond[NCi] = dot(ψr_views_1[NCi], Jα, ψr_views_2[NCi])
         end
         cond ./= NR
     else
         cond = on_host_zeros(dt_cplx, length(NC_all), NR)
         Threads.@threads for NCi in 1:length(NC_all)
-            cond[NCi] = dot(ψr_views_1[NCi], Jα, ψr_views_2[NCi])
+            for NRi in 1:NR
+                cond[NCi, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα, view(ψr_views_2[NCi], :, NRi))
+            end
         end
     end
 

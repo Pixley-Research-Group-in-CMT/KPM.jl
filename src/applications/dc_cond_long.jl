@@ -92,7 +92,7 @@ function dc_long(
         cond = on_host_zeros(dt_cplx, length(NC_all), NR)
         Threads.@threads for NCi in 1:length(NC_all)
             for NRi in 1:NR
-                cond[NCi, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα * view(ψr_views_2[NCi], :, NRi))
+                cond[NCi, NRi] = dot(view(ψr_views_1[NCi], :, NRi:NRi), Jα, view(ψr_views_2[NCi], :, NRi:NRi))
             end
         end
     end

@@ -25,8 +25,6 @@ function dc_long(
     if !(typeof(kernel) <: Array)
         kernel = [kernel, kernel]
     end
-    #kernel_vecs1 = map(NC -> kernel[1].(0:NC-1, NC) .* hn.(0:NC-1), NC_all)
-    #kernel_vecs2 = map(NC -> kernel[2].(0:NC-1, NC) .* hn.(0:NC-1), NC_all)
     NC_max = maximum(NC_all)
     Ef_tilde = Ef / H_rescale_factor
 
@@ -49,11 +47,7 @@ function dc_long(
 
     # generate all views
     ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:3)
-    ψall_r_views_1 = map(x -> view(ψall_r, :, 1:NR, x), 1:3)
-    ψall_r_views_2 = map(x -> view(ψall_r, :, (NR+1):(2*NR), x), 1:3)
     ψr_views = map(x -> view(ψr, :, :, x), 1:length(NC_all))
-    ψr_views_1 = map(x -> view(ψr, :, 1:NR, x), 1:length(NC_all))
-    ψr_views_2 = map(x -> view(ψr, :, (NR+1):(2*NR), x), 1:length(NC_all))
 
     # right start
     view(ψ0, :, 1:NR) .= psi_in
@@ -65,13 +59,13 @@ function dc_long(
     @sync ψall_r_views[r_i(n)] .= ψ0
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
+    broadcast_assign!(ψr, ψr_views, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
 
     n = 2
     @sync mul!(ψall_r_views[r_i(n)], H, ψall_r_views[r_ip(n)])
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    @sync broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
+    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
 
     n_enum = 3:NC_max
     if verbose >= 1
@@ -88,11 +82,14 @@ function dc_long(
 
             #NC_idx = findall(i -> i >= n, NC_all)
             NC_idx_max = findlast(i -> i >= n, NC_all)
-            broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
+            @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
         end
     end
 
-    
+@time begin    
+    ψr_views_1 = map(x -> view(ψr, :, 1:NR, x), 1:length(NC_all))
+    ψr_views_2 = map(x -> view(ψr, :, (NR+1):(2*NR), x), 1:length(NC_all))
+
     if avg_NR
         cond = on_host_zeros(dt_cplx, length(NC_all))
         #Threads.@threads for NCi in 1:length(NC_all)
@@ -105,29 +102,32 @@ function dc_long(
         #Threads.@threads for NCi in 1:length(NC_all)
         for (NCi, NC_orig_i) in enumerate(NC_sort_i)
             for NRi in 1:NR
-                @sync cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα * view(ψr_views_2[NCi], :, NRi))
+                @sync cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi:NRi), Jα,  view(ψr_views_2[NCi], :, NRi:NRi))
             end
         end
     end
+end
 
     return cond / H_rescale_factor
 end
 
 
-function broadcast_assign!(y_all::CuArray, x::CuArray, c_all::CuArray, idx_max::Int)
+function broadcast_assign!(y_all::CuArray, y_all_views, x::CuArray, c_all::CuArray, idx_max::Int)
     # only working on 1:idx_max of NC_all
-    block_count_x = cld(cld(length(x), 8), 1024)
-    block_count_y = idx_max
+    block_count_x = 32#cld(cld(length(x), 32), 512)
+    block_count_y = 3#idx_max
     @debug "block_count=$(block_count_x),$(block_count_y); c_all=$(c_all); idx=1:$(idx_max)"
-    @cuda threads=1024 blocks=(block_count_x, block_count_y) cu_broadcast_mult_assign!(y_all, x, c_all)
+    NVTX.@range "mainrange" begin
+        CUDA.@sync @cuda threads=256 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
+    end
     return nothing
 end
-function broadcast_assign!(y_all::Array{T, 1} where {T<:Union{Array, SubArray}}, x::Union{Array, SubArray}, c_all::Array, idx::Array)
-    mt_broadcast_assign!(y_all, x, c_all, idx)
+function broadcast_assign!(y_all::Array, y_all_views::Array{T, 1} where {T<:Union{Array, SubArray}}, x::Union{Array, SubArray}, c_all::Array, idx_max::Int)
+    mt_broadcast_assign!(y_all_views, x, c_all, 1:idx_max)
 end
 
 
-function cu_broadcast_mult_assign!(y_all, x, c_all)
+function cu_broadcast_assign!(y_all, x, c_all)
     # copying x to y_all (3D list, first two), multiplying by kernel_vecs_Tn
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x # thread id
     stride = blockDim().x * gridDim().x # number of threads per block * number of blocks
@@ -135,18 +135,7 @@ function cu_broadcast_mult_assign!(y_all, x, c_all)
 
     x_l = length(x)
     for i = index:stride:x_l
-        #CUDA.@show "$i @ $(blockIdx().x)x$(threadIdx().x)"
         @inbounds y_all[i + (c_idx - 1) * x_l] += x[i] * c_all[c_idx]
-    end
-    return nothing
-end
-function cu_mult_assign!(y_all_j, x, c)
-    # copying x to y_all (list of list), multiplying by kernel_vecs_Tn
-    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x # thread id
-    stride = blockDim().x * gridDim().x # number of threads per block * number of blocks
-    for i = index:stride:length(x)
-        #CUDA.@show "$i @ $(blockIdx().x)x$(threadIdx().x)"
-        y_all_j[i] += x[i] * c
     end
     return nothing
 end

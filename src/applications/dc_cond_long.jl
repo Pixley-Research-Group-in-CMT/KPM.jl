@@ -71,7 +71,7 @@ function dc_long(
     @sync mul!(ψall_r_views[r_i(n)], H, ψall_r_views[r_ip(n)])
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    @time @sync broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
+    @sync broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
 
     n_enum = 3:NC_max
     if verbose >= 1
@@ -88,15 +88,11 @@ function dc_long(
 
             #NC_idx = findall(i -> i >= n, NC_all)
             NC_idx_max = findlast(i -> i >= n, NC_all)
-            if mod(n, 10) == 0
-                @time broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
-            else
-                broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
-            end
+            broadcast_assign!(ψr, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
         end
     end
 
-    @time begin
+    
     if avg_NR
         cond = on_host_zeros(dt_cplx, length(NC_all))
         #Threads.@threads for NCi in 1:length(NC_all)
@@ -113,7 +109,6 @@ function dc_long(
             end
         end
     end
-end
 
     return cond / H_rescale_factor
 end

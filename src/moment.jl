@@ -674,7 +674,7 @@ function kpm_3d(
                 psi_in_r=nothing,
                 psi_in=nothing
                )
-    μ = zeros(ComplexF64, NC, NC, NC)
+    μ = zeros(dt_cplx, NC, NC, NC)
     if !isnothing(psi_in)
         if (!isnothing(psi_in_l) || !isnothing(psi_in_r))
            @warn "`psi_in_l`, `psi_in_r` and `psi_in` are simoutaneously set. Taking `psi_in` and discarding the others"

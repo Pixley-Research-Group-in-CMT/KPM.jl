@@ -1,6 +1,7 @@
 using DocStringExtensions
 using ProgressBars
 using SparseArrays
+using Logging
 
 
 """
@@ -98,6 +99,12 @@ of ket ``|ψr>``.
 left states to be kept in memory for each loop of right states. The time
 complexity is reduced from ``O(N\\times NC^2)`` to ``O(N\\times NC\\times arr\\_size)`` while space
 complexity is increased from ``O(N\\times NC)`` to ``O(N\\times NC\\times arr\\_size)``.
+
+- `moment_parity` : The condition enforced on μmn. Choose from `:NONE`, `:ODD` and `:EVEN`.
+`:NONE` will calculate all μmn; `:ODD` will calculate μmn such that `mod(m+n, 2)==1`;
+`:EVEN` will calculate μmn such that `mod(m+n, 2)==0`. As an example, `moment_parity=:EVEN`
+can be used when calculating longitudinal conductivity on model with
+particle-hole symmetry to save time and increase accuracy. 
 
 
 **working spaces KWARGS**: The following keyword args are simply providing working
@@ -393,15 +400,16 @@ function kpm_2d(
                 psi_in_l=nothing,
                 psi_in_r=nothing,
                 arr_size=3,
+                moment_parity=:NONE,
                 verbose=0
                )
     mu = on_host_zeros(dt_cplx, NC, NC)
     if isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
-        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu; arr_size=arr_size, verbose=verbose)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu; arr_size=arr_size, verbose=verbose, moment_parity=moment_parity)
     elseif !isnothing(psi_in) & isnothing(psi_in_l) & isnothing(psi_in_r)
-        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in; arr_size=arr_size, verbose=verbose)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in; arr_size=arr_size, verbose=verbose, moment_parity=moment_parity)
     elseif isnothing(psi_in) & !isnothing(psi_in_l) & !isnothing(psi_in_r)
-        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose)
+        kpm_2d!(H, Jα, Jβ, NC, NR, NH, mu, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose, moment_parity=moment_parity)
     else
         throw("unimplemented")
     end
@@ -416,6 +424,8 @@ function kpm_2d!(
                  psi_in_r;
                  arr_size::Int64=3,
                  verbose=0,
+                 mn_sym=false,
+                 moment_parity=:NONE,
                  # workspace kwargs
                  ψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
                  Jψ0r=maybe_on_device_zeros(dt_cplx, NH, NR),
@@ -426,11 +436,31 @@ function kpm_2d!(
                  ψw=maybe_on_device_zeros(dt_cplx, NH, NR),
                 )
 
+    if moment_parity == :NONE
+        _NC_offset = 0
+        NCstep = 1
+    elseif moment_parity == :ODD # odd means we only consider terms that mod(m-n, 2)==1 (even-odd or odd-even)
+        _NC_offset = 1
+        NCstep = 2
+    elseif moment_parity == :EVEN # even means we only consider terms that mod(m-n, 2)==0 (even-even or odd-odd)
+        _NC_offset = 0
+        NCstep = 2
+    else
+        throw(ArgumentError("moment_parity=$(moment_parity) not understood."))
+    end
+    NC0(m1, n) = mod(m1 + n + _NC_offset, NCstep) + 1
+
     # do not enforce normalization
     @assert (size(psi_in_r) == (NH, NR)) "`psi_in_r` has size $(size(psi_in_r)) but expecting $(NH), $(NR)"
     @assert (size(psi_in_l) == (NH, NR)) "`psi_in_l` has size $(size(psi_in_l)) but expecting $(NH), $(NR)"
     ψ0r .= maybe_to_device(psi_in_r)
     ψ0l .= maybe_to_device(psi_in_l)
+
+    #mn_sym = false
+    #if Jα ≡ Jβ
+    #    mn_sym = true
+    #    println("Jα and Jβ are identical. using m <-> n symmetry.")
+    #end
 
     H = maybe_to_device(H)
     Jα = maybe_to_device(Jα)
@@ -457,14 +487,19 @@ function kpm_2d!(
     println(typeof(ψall_r))
     println(typeof(ψall_l))
 
+
     for rep in 1:(reps+1)
         m1 = (rep - 1) * arr_size + 1
         m2 = min(rep * arr_size, NC)
         if verbose >= 1
-            println("rep $(rep)/$(reps+1): $(m1) to $(m2)")
+            println("step $(rep)/$(reps+1): $(m1) to $(m2)")
         end
         rep_size = m2 - m1 + 1
-        μ_rep_all = map(n -> view(μ, n, m1:m2), 1:NC) # μ should be on host!!
+        if mn_sym
+            μ_rep_all = map(n -> view(μ, n, m1:m2), 1:m2)
+        else
+            μ_rep_all = map(n -> view(μ, n, m1:m2), 1:NC) # μ should be on host!!
+        end
         # loop over l
         chebyshev_iter(H, ψall_l_views, rep_size)
 
@@ -473,7 +508,7 @@ function kpm_2d!(
         ψall_r_views[n] .= Jψ0r
         mul!(JTnHJψr, Jβ,ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size; NC0=NC0(m1, n), NCstep=NCstep)
         ## TODO: IMPROVE THIS?
 
         # n = 2
@@ -481,9 +516,13 @@ function kpm_2d!(
         mul!(ψall_r_views[n], H, Jψ0r) # use initial values to calc Hψ0r
         mul!(JTnHJψr, Jβ, ψall_r_views[n])
 
-        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
+        broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size; NC0=NC0(m1, n), NCstep=NCstep)
 
-        n_enum = 3:NC
+        if mn_sym
+            n_enum = 3:m2
+        else
+            n_enum = 3:NC
+        end
         if verbose >= 1
             n_enum = ProgressBar(n_enum)
         end
@@ -494,13 +533,22 @@ function kpm_2d!(
                                   ψall_r_views[r_i(n)])
             mul!(JTnHJψr, Jβ, ψall_r_views[r_i(n)])
 
-            broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size)
+            broadcast_dot_reduce_avg_2d_1d!(μ_rep_all[n], ψall_l_views, JTnHJψr, NR, rep_size; NC0=NC0(m1, n), NCstep=NCstep)
         end
 
         # wrap around to prepare for next
         chebyshev_iter_wrap(H, ψall_l_views, arr_size) #timed
     end
 
+    if mn_sym
+        # apply symmetry
+        for m = 1:NC
+            for n = (m + 1):NC
+                μ[m, n] = real(μ[m, n])
+                μ[n, m] = μ[m, n]
+            end
+        end
+    end
     return nothing
 end
 
@@ -614,4 +662,38 @@ function kpm_3d!(
                )
     end
 
+end
+
+
+function kpm_3d(
+                H, Jα, Jβ, Jγ,
+                NC::Int64, NR::Int64, NH::Int64;
+                arr_size::Int64=3,
+                verbose=0,
+                psi_in_l=nothing,
+                psi_in_r=nothing,
+                psi_in=nothing
+               )
+    μ = zeros(ComplexF64, NC, NC, NC)
+    if !isnothing(psi_in)
+        if (!isnothing(psi_in_l) || !isnothing(psi_in_r))
+           @warn "`psi_in_l`, `psi_in_r` and `psi_in` are simoutaneously set. Taking `psi_in` and discarding the others"
+       end
+       psi_in_l = psi_in
+       psi_in_r = psi_in
+   elseif !isnothing(psi_in_l) || !isnothing(psi_in_r)
+       if isnothing(psi_in_l) || isnothing(psi_in_r)
+           @warn "only one of `psi_in_l` and `psi_in_r` is set. Setting them as the same."
+           psi_in_l = something(psi_in_l, psi_in_r)
+           psi_in_r = psi_in_l
+       end
+   else
+       @info "Using random phase as random vector"
+       psi_in_l = exp.(2pi * 1im * rand(NH, NR));
+       KPM.normalize_by_col(psi_in_l, NR)
+       psi_in_r = psi_in_l
+   end
+
+   kpm_3d!(H, Jα, Jβ, Jγ, NC, NR, NH, μ, psi_in_l, psi_in_r; arr_size=arr_size, verbose=verbose)
+   return μ
 end

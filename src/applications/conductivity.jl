@@ -1,7 +1,9 @@
 using DocStringExtensions
 using ProgressBars
 using Zygote
+using Logging 
 include("dc_cond_util.jl")
+include("dc_cond_long.jl")
 
 """
 $(METHODLIST)
@@ -26,6 +28,8 @@ function d_dc_cond end
 $(METHODLIST)
 
 Calculate DOS and its energy derivatives (by setting `dE_order`) at zero energy.
+
+Warning: This method does not have correct normalization at the moment. 
 """
 function dc_cond0 end
 
@@ -114,4 +118,34 @@ function _d_dc_cond_single(μtilde, H_rescale_factor::Float64, E, NC::Int64)
     dσE = real(Γnmμnmαβ(μtilde, ϵ, NC) / ((1-ϵ^2)^2) / (a^2))
 
     return dσE
+end
+
+"""
+calculate conductivity for EF=0. Only works for longitudinal cond.
+Garcia et. al. Supp eq.25.
+"""
+function dc_cond0(mu, H_rescale_factor::Number; kernel=JacksonKernel, NC::Int64=size(mu, 1))
+    mu_tilde = mu2D_apply_kernel_and_h(mu[1:NC, 1:NC], NC, kernel)
+    oneone = sum(mu_tilde[1:4:NC, 1:4:NC]);
+    onethree = sum(mu_tilde[1:4:NC, 3:4:NC]);
+    threeone = sum(mu_tilde[3:4:NC, 1:4:NC]);
+    threethree = sum(mu_tilde[3:4:NC, 3:4:NC]);
+    return (oneone + threethree - onethree - onethree) / H_rescale_factor # is it correct to divide by H_rescale_factor?
+end
+"""
+calculate conductivity for arbitrary EF. Only works for longitudinal cond.
+Garcia et. al. Supp eq.25.
+"""
+function dc_cond_single(mu, H_rescale_factor::Number, Ef::Number; kernel=JacksonKernel, NC::Int64=size(mu, 1))
+    Ef_tilde = Ef / H_rescale_factor
+    mu_tilde = maybe_to_host(mu2D_apply_kernel_and_h(mu[1:NC, 1:NC], NC, kernel))
+    
+    chebyT_poly_all = chebyshevT_accurate.((1:NC) .- 1, Ef_tilde)
+    @debug "$(size(chebyT_poly_all)), $(size(mu_tilde))"
+
+    mu_tilde .*= chebyT_poly_all
+    mu_tilde .*= chebyT_poly_all'
+
+    return sum(mu_tilde) / H_rescale_factor # is it correct to divide by H_rescale_factor?
+
 end

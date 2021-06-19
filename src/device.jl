@@ -12,20 +12,20 @@ function whichcore()
 end
 whichcore()
 
-@generated function maybe_to_device(x::SparseMatrixCSC)
+function maybe_to_device(x::SparseMatrixCSC)
     if CUDA.has_cuda()
-        return :(CUSPARSE.CuSparseMatrixCSC(x))
+        return CUDA.CUSPARSE.CuSparseMatrixCSC(x)
     else
-        return :(x)
+        return x
     end
 end
 maybe_to_device(x::CUSPARSE.CuSparseMatrixCSC) = x
 
-@generated function maybe_to_device(x::Array)
+function maybe_to_device(x::Array)
     if CUDA.has_cuda()# && eltype(x).isbitstype
-        return :(CuArray(x))
+        return CUDA.CuArray(x)
     else
-        return :(x)
+        return x
     end
 end
 maybe_to_device(x::CuArray) = x
@@ -38,20 +38,20 @@ maybe_to_host(x::CuArray) = Array(x)
 maybe_to_host(x::CUSPARSE.CuSparseMatrixCSC) = SparseMatrixCSC(x)
 maybe_to_host(x::Number) = x
 
-@generated function maybe_on_device_rand(args...)
+function maybe_on_device_rand(args...)
     if CUDA.has_cuda()
-        return :(CUDA.rand(args...))
+        return CUDA.rand(args...)
     else
-        return :(rand(args...))
+        return rand(args...)
     end
 end
 
 
-@generated function maybe_on_device_zeros(args...)
+function maybe_on_device_zeros(args...)
     if CUDA.has_cuda()
-        return :(CUDA.zeros(args...))
+        return CUDA.zeros(args...)
     else
-        return :(zeros(args...))
+        return zeros(args...)
     end
 end
 

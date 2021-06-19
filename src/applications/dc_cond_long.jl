@@ -37,7 +37,7 @@ function dc_long(
 
 
     if isnothing(psi_in)
-        psi_in = exp.(rand(dt_real, H.n, NR) * 2im * pi);
+        psi_in = exp.(rand(dt_real, size(H, 1), NR) * 2im * pi);
         normalize_by_col(psi_in, NR)
     end
     psi_in = maybe_to_device(psi_in)

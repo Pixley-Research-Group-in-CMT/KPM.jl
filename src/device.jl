@@ -12,23 +12,45 @@ function whichcore()
 end
 whichcore()
 
-@generated function maybe_to_device(x::SparseMatrixCSC{T, Int64} where T<:Number)
+function maybe_to_device(x::SparseMatrixCSC)
     if CUDA.has_cuda()
-        return :(CUSPARSE.CuSparseMatrixCSC{dt_cplx}(x))
+        if (typeof(x) <: CUDA.CUSPARSE.CuSparseMatrixCSC) && (eltype(x) == dt_cplx)
+            return x
+        else
+            return CUDA.CUSPARSE.CuSparseMatrixCSC{dt_cplx}(x)
+        end
     else
-        return :(SparseMatrixCSC{dt_cplx, Int64}(x))
+        if eltype(x) == dt_cplx
+            return x
+        else
+            return SparseMatrixCSC{dt_cplx, Int64}(x)
+        end
     end
 end
 maybe_to_device(x::CUSPARSE.CuSparseMatrixCSC) = x
 
-@generated function maybe_to_device(x::Array{T} where T<:Number)
+function maybe_to_device(x::Array)
     if CUDA.has_cuda()# && eltype(x).isbitstype
-        return :(CuArray{dt_cplx}(x))
+        if (typeof(x) <: CUDA.CuArray) && (eltype(x) == dt_cplx)
+            return x
+        else
+            return CUDA.CuArray{dt_cplx}(x)
+        end
     else
-        return :(Array{dt_cplx}(x))
+        if eltype(x) == dt_cplx
+            return x
+        else
+            return Array{dt_cplx}(x)
+        end
     end
 end
-maybe_to_device(x::CuArray{T} where T<:Number) = CuArray{dt_cplx}(x)
+function maybe_to_device(x::CuArray{T} where T<:Number)
+    if eltype(x) == dt_cplx
+        return x
+    else
+        return CuArray{dt_cplx}(x)
+    end
+end
 
 maybe_to_device(x::SubArray) = x # Pushing SubArray to GPU should never happen
 
@@ -38,20 +60,20 @@ maybe_to_host(x::CuArray) = Array(x)
 maybe_to_host(x::CUSPARSE.CuSparseMatrixCSC) = SparseMatrixCSC(x)
 maybe_to_host(x::Number) = x
 
-@generated function maybe_on_device_rand(args...)
+function maybe_on_device_rand(args...)
     if CUDA.has_cuda()
-        return :(CUDA.rand(args...))
+        return CUDA.rand(args...)
     else
-        return :(rand(args...))
+        return rand(args...)
     end
 end
 
 
-@generated function maybe_on_device_zeros(args...)
+function maybe_on_device_zeros(args...)
     if CUDA.has_cuda()
-        return :(CUDA.zeros(args...))
+        return CUDA.zeros(args...)
     else
-        return :(zeros(args...))
+        return zeros(args...)
     end
 end
 

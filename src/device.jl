@@ -2,6 +2,7 @@ using Random
 using SparseArrays
 using LinearAlgebra
 using CUDA
+using Logging
 
 function whichcore()
     if CUDA.has_cuda()
@@ -14,8 +15,13 @@ whichcore()
 
 function maybe_to_device(x::Union{SparseMatrixCSC, CUSPARSE.CuSparseMatrixCSC})
     if CUDA.has_cuda()
-        if (typeof(x) <: CUDA.CUSPARSE.CuSparseMatrixCSC) && (eltype(x) == dt_cplx)
-            return x
+        if (typeof(x) <: CUDA.CUSPARSE.CuSparseMatrixCSC)
+            if (eltype(x) == dt_cplx)
+                return x
+            else
+                @info "Inefficient conversion of eltype ($(eltype(x)) to $(dt_cplx)) in $(typeof(x))"
+                return maybe_to_device(maybe_to_host(x))
+            end
         else
             return CUDA.CUSPARSE.CuSparseMatrixCSC{dt_cplx}(x)
         end

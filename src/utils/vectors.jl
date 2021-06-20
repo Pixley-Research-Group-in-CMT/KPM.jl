@@ -160,3 +160,8 @@ end
 r_i(n) = mod(n - 1, 3) + 1
 r_ip(n) = mod(n - 2, 3) + 1
 r_ipp(n) = mod(n - 3, 3) + 1
+
+# Pointing - 2 
+r2_i(n) = mod(n - 1, 2) + 1
+r2_ip(n) = mod(n - 2, 2) + 1
+r2_ipp(n) = mod(n - 1, 2) + 1 # using this set of pointing, ipp will always be overwritten by i

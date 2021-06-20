@@ -1,5 +1,7 @@
 using Logging
 ## Special algorithm for longitudinal DC conductivity
+
+
 function dc_long(
                  H, Jα,
                  H_rescale_factor,
@@ -11,7 +13,7 @@ function dc_long(
                  # workspace kwargs
                  ψr=maybe_on_device_zeros(dt_cplx, NH, NR * 2, length(NC_all)),
                  ψ0=maybe_on_device_zeros(dt_cplx, NH, NR * 2),
-                 ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 3),
+                 ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 2),
                  avg_NR=true
                 )
 
@@ -46,7 +48,7 @@ function dc_long(
     Jα = maybe_to_device(Jα)
 
     # generate all views
-    ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:3)
+    ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:2)
     ψr_views = map(x -> view(ψr, :, :, x), 1:length(NC_all))
 
     # right start
@@ -56,16 +58,16 @@ function dc_long(
 
     # loop over r
     n = 1 # THIS IS g0, T0, etc.
-    @sync ψall_r_views[r_i(n)] .= ψ0
+    @sync ψall_r_views[r2_i(n)] .= ψ0
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    broadcast_assign!(ψr, ψr_views, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
+    broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
 
     n = 2
-    @sync mul!(ψall_r_views[r_i(n)], H, ψall_r_views[r_ip(n)])
+    @sync mul!(ψall_r_views[r2_i(n)], H, ψall_r_views[r2_ip(n)])
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
+    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
 
     n_enum = 3:NC_max
     if verbose >= 1
@@ -75,14 +77,13 @@ function dc_long(
     @sync begin
         for n in n_enum # TODO : save memory possible here. We do not need 3 vectors for psi 2
             @sync chebyshev_iter_single(H,
-                                        ψall_r_views[r_ipp(n)],
-                                        ψall_r_views[r_ip(n)],
-                                        ψall_r_views[r_i(n)])
-
+                                        ψall_r_views[r2_i(n)],
+                                        ψall_r_views[r2_ip(n)])
+            # output is stored at r2_i(n) === r2_ipp(n)
 
             #NC_idx = findall(i -> i >= n, NC_all)
             NC_idx_max = findlast(i -> i >= n, NC_all)
-            @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r_i(n)], kernel_Tn[:, n], NC_idx_max)
+            @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
         end
     end
 

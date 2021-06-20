@@ -1,5 +1,6 @@
 using CUDA
 using Logging
+using LoopVectorization
 
 
 ASA = Array{T} where {T <: SubArray}
@@ -102,9 +103,18 @@ end
 
 # SubArray and CuArray are all pointer-like
 function chebyshev_iter_single(H,
-                               V_pp_in::Union{SubArray, CuArray, ASA},
-                               V_p_in::Union{SubArray, CuArray, ASA},
-                               V_out::Union{SubArray, CuArray, ASA})
+                               V_pp_in::Union{SubArray, ASA},
+                               V_p_in::Union{SubArray, ASA},
+                               V_out::Union{SubArray,ASA})
+    @tturbo V_out .= V_pp_in
+    chebyshev_iter_single(H, V_out, V_p_in)
+end
+
+
+function chebyshev_iter_single(H,
+                               V_pp_in::CuArray,
+                               V_p_in::CuArray,
+                               V_out::CuArray)
     V_out .= V_pp_in
     chebyshev_iter_single(H, V_out, V_p_in)
 end

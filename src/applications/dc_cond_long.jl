@@ -31,7 +31,11 @@ function dc_long(
     NC_max = maximum(NC_all)
     Ef_tilde = Ef / H_rescale_factor
 
-    Tn_e = chebyshevT_accurate.((0:NC_max-1)', Ef_tilde)
+    if Ef_tilde == 0
+        Tn_e = chebyshevT_0.((0:NC_max-1)')
+    else
+        Tn_e = chebyshevT_accurate.((0:NC_max-1)', Ef_tilde)
+    end
 
     kernel1_Tn = kernel[1].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e
     kernel2_Tn = kernel[2].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e

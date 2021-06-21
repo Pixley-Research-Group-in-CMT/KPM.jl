@@ -7,8 +7,15 @@ function chebyshevT_poly(n::Int64)
     n_all[n+1] = 1
     return ChebyshevT(n_all)
 end
+
+chebyshevT_0(n) = (mod(n+1, 2)) * (2 - mod(n+1, 4))
+
 function chebyshevT_accurate(n::Int64, x)
-    return chebyshevT_poly(n)(x)
+    if x == 0
+        return chebyshevT_0(n)
+    else
+        return chebyshevT_poly(n)(x)
+    end
 end
 
 chebyshevT(n::Integer,x) = @. cos(n*acos(x))

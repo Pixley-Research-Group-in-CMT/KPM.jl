@@ -16,7 +16,8 @@ function dc_long(
                  ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 2),
                  avg_NR=true
                 )
-
+    Ef = KPM.dt_real(Ef)
+    H_rescale_factor = KPM.dt_real(H_rescale_factor)
     #TODO assert NC_all is sorted
     NC_orig = NC_all
     NC_sort_i = sortperm(NC_orig, rev=true)

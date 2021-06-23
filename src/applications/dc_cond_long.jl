@@ -149,7 +149,7 @@ end
 function mt_broadcast_assign!(y_all, x, c_all, idx)
     # copying x to y_all (list of list), multiplying by kernel_vecs_Tn
     Threads.@threads for j in idx
-        y_all[j] .+= x .* c_all[j]
+        @inbounds y_all[j] .+= x .* c_all[j]
     end
     return nothing
 end

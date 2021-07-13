@@ -15,7 +15,8 @@ function dc_long(
                  ψr=maybe_on_device_zeros(dt_cplx, NH, NR * 2, length(NC_all)),
                  ψ0=maybe_on_device_zeros(dt_cplx, NH, NR * 2),
                  ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 2),
-                 avg_NR=true
+                 avg_NR=true,
+                 debug_mode=true
                 )
     Ef = KPM.dt_real(Ef)
     H_rescale_factor = KPM.dt_real(H_rescale_factor)
@@ -50,8 +51,22 @@ function dc_long(
     end
     psi_in = maybe_to_device(psi_in)
 
+
+    # Hermitian warning
+    if debug_mode
+        @time begin
+            if !ishermitian(H)
+                @warn "Hamiltonian is not Hermitian. Please make sure it is upper triangular."
+            end
+            if !ishermitian(Jx)
+                @warn "Current operator is not Hermitian. Please make sure it is upper triangular."
+            end
+        end
+    end
+
     H = Hermitian(maybe_to_device(H), :U)
     Jα = Hermitian(maybe_to_device(Jα), :U)
+
 
     # generate all views
     ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:2)

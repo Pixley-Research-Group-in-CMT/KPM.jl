@@ -99,7 +99,7 @@ function dos(
     μtilde = μ .* hgn
 
     if dE_order == 0
-        n_grid = maybe_to_device(collect(0:(NC-1)))
+        n_grid = maybe_to_device(collect(0:(NC-1)), Int64)
         rhoE = chebyshev_lin_trans(E_grid_inrange / a,
                                    n_grid,
                                    μtilde)

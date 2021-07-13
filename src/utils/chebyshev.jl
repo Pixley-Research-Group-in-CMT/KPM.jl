@@ -19,17 +19,17 @@ function chebyshevT_accurate(n::Int64, x)
 end
 
 chebyshevT(n::Integer,x) = @. cos(n*acos(x))
-chebyshevT_cu(n, x) = CUDA.cos(n * CUDA.acos(x))
+chebyshevT_cu(n, x) = cos(n * acos(x))
 
-function chebyshevT_xn(x_grid::Array{Float64, 1}, n_grid::Array{Int64, 1})
+function chebyshevT_xn(x_grid::Array{T, 1} where {T <: dt_num}, n_grid::Array{Int64, 1})
     return chebyshevT.(transpose(n_grid), x_grid)
 end
 
-function chebyshevT_xn(x::Real, n_grid::Array{Int64, 1})
+function chebyshevT_xn(x::dt_num, n_grid::Array{Int64, 1})
     return chebyshevT.(transpose(n_grid), x)
 end
 
-function chebyshevT_xn(x_grid::CuArray{Float64, 1}, n_grid::CuArray{Int64, 1})
+function chebyshevT_xn(x_grid::CuArray{T, 1} where {T <: dt_num}, n_grid::CuArray{Int64, 1})
     Nx = length(x_grid)
     Nn = length(n_grid)
     T_xn = maybe_on_device_zeros(Nx, Nn)

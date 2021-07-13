@@ -39,8 +39,8 @@ function dc_long(
         Tn_e = chebyshevT_accurate.((0:NC_max-1)', Ef_tilde)
     end
 
-    kernel1_Tn = kernel[1].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e
-    kernel2_Tn = kernel[2].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e
+    kernel1_Tn = dt_cplx.(kernel[1].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e)
+    kernel2_Tn = dt_cplx.(kernel[2].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e)
 
     kernel_Tn = maybe_to_device([kernel1_Tn kernel2_Tn])
 

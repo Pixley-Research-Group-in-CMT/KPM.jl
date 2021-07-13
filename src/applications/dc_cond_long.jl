@@ -1,4 +1,5 @@
 using Logging
+using LinearAlgebra
 ## Special algorithm for longitudinal DC conductivity
 
 
@@ -49,8 +50,8 @@ function dc_long(
     end
     psi_in = maybe_to_device(psi_in)
 
-    H = maybe_to_device(H)
-    Jα = maybe_to_device(Jα)
+    H = Hermitian(maybe_to_device(H), :U)
+    Jα = Hermitian(maybe_to_device(Jα), :U)
 
     # generate all views
     ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:2)

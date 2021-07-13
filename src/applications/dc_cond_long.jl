@@ -124,7 +124,7 @@ function dc_long(
         #Threads.@threads for NCi in 1:length(NC_all)
         for (NCi, NC_orig_i) in enumerate(NC_sort_i)
             for NRi in 1:NR
-                @sync cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi:NRi), Jα,  view(ψr_views_2[NCi], :, NRi:NRi))
+                @sync cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα * view(ψr_views_2[NCi], :, NRi))
             end
         end
     end

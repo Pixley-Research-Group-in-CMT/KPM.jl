@@ -58,7 +58,7 @@ function dc_long(
             if !ishermitian(H)
                 @warn "Hamiltonian is not Hermitian. Please make sure it is upper triangular."
             end
-            if !ishermitian(Jx)
+            if !ishermitian(Jα)
                 @warn "Current operator is not Hermitian. Please make sure it is upper triangular."
             end
         end

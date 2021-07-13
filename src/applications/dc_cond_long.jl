@@ -207,10 +207,7 @@ end
 
 function _split_vector(x, N)
     pieces = _partition_l(length(x), N)
-
-    ub = cumsum(pieces)
-    lb = ub - pieces
-    lb .+= 1
+    lb, ub = _get_lb_ub(pieces)
 
     return map((l,u)->view(x, l:u), lb, ub)
     

@@ -165,3 +165,23 @@ r_ipp(n) = mod(n - 3, 3) + 1
 r2_i(n) = mod(n - 1, 2) + 1
 r2_ip(n) = mod(n - 2, 2) + 1
 r2_ipp(n) = mod(n - 1, 2) + 1 # using this set of pointing, ipp will always be overwritten by i
+
+
+# partitioning a number l into N pieces
+# Example: 100, 3 -> [34, 33, 33]
+function _partition_l(l, N)
+    each = cld(l, N) - 1
+    res = fill(each, N)
+    excess = l - each*N
+    res[1:excess].+=1;
+    return res
+end
+
+# convert a list of partition to the lower/upper bounds
+# Example: [3,4,5] -> ([1, 4, 8], [3, 7, 12])
+function _get_lb_ub(split_list)
+    ub = cumsum(split_list)
+    lb = ub - split_list 
+    lb .+= 1
+    return (lb, ub)
+end

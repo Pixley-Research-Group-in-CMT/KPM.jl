@@ -28,6 +28,16 @@ struct MDCuArray{T}
 end
 Base.eltype(x::MDCuArray{T}) where {T} = T
 Base.collect(x::MDCuArray) = collect(x.arr)
+Base.view(x::MDCuArray, args...) = view(x.arr, args...)
+maybe_split_view(x::MDCuArray, args...; split_hint=nothing) = _create_UM_arr(view(x.arr, args...); split_hint=split_hint)
+maybe_split_view(x::AbstractArray, args...; split_hint=nothing) = view(x, args...)
+function assignto!(dst, src::AbstractArray)
+    dst .= src
+end
+function assignto!(dst, src::MDCuArray)
+    dst .= src.arr
+end
+
 
 function LinearAlgebra.Hermitian(x::MDCuSplits)
     @warn "Hermitian is bypassed for MDCuSplits"

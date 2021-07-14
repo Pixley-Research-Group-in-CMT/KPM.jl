@@ -4,9 +4,9 @@ dt_real = Float32
 dt_cplx = ComplexF32
 dt_num = Union{Float32, ComplexF32}
 
+include("utils/Utils.jl")
 include("device.jl")
 
-include("utils/Utils.jl")
 
 include("kernels/kernels.jl")
 

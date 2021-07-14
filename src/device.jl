@@ -80,9 +80,13 @@ maybe_to_host(x::CuArray) = Array(x)
 maybe_to_host(x::CUSPARSE.CuSparseMatrixCSC) = SparseMatrixCSC(x)
 maybe_to_host(x::Number) = x
 
-function maybe_on_device_rand(args...)
+function maybe_on_device_rand(args...; multigpu=0, split_hint=nothing)
     if CUDA.has_cuda()
-        return CUDA.rand(args...)
+        if multigpu > 0
+            return _create_UM_arr(rand(args...); split_hint=split_hint)
+        else
+            return CUDA.rand(args...)
+        end
     else
         return rand(args...)
     end
@@ -91,7 +95,11 @@ end
 
 function maybe_on_device_zeros(args...)
     if CUDA.has_cuda()
-        return CUDA.zeros(args...)
+        if multigpu > 0
+            return _create_UM_arr(rand(args...); split_hint=split_hint)
+        else
+            return CUDA.zeros(args...)
+        end
     else
         return zeros(args...)
     end

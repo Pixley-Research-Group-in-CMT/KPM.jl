@@ -12,9 +12,9 @@ function dc_long(
                  kernel=KPM.JacksonKernel,
                  Ef=0.0,
                  # workspace kwargs
-                 ψr=maybe_on_device_zeros(dt_cplx, NH, NR * 2, length(NC_all)),
-                 ψ0=maybe_on_device_zeros(dt_cplx, NH, NR * 2),
-                 ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 2),
+                 ψr=maybe_on_device_zeros(dt_cplx, NH, NR * 2, length(NC_all)), # will be split but not yet
+                 ψ0=maybe_on_device_zeros(dt_cplx, NH, NR * 2), # will not be split
+                 ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 2), # will be split but not yet
                  avg_NR=true,
                  debug_mode=true
                 )
@@ -42,14 +42,14 @@ function dc_long(
     kernel1_Tn = dt_cplx.(kernel[1].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e)
     kernel2_Tn = dt_cplx.(kernel[2].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e)
 
-    kernel_Tn = maybe_to_device([kernel1_Tn kernel2_Tn])
+    kernel_Tn = maybe_to_device([kernel1_Tn kernel2_Tn]; split_hint=nothing) # will not be split
 
 
     if isnothing(psi_in)
-        psi_in = exp.(maybe_on_device_rand(dt_real, size(H, 1), NR) * 2im * pi);
+        psi_in = exp.(maybe_on_device_rand(dt_real, size(H, 1), NR) * 2im * pi); # will be split
         normalize_by_col(psi_in, NR)
     end
-    psi_in = maybe_to_device(psi_in)
+    psi_in = maybe_to_device(psi_in) # will be split
 
 
     # Hermitian warning
@@ -64,33 +64,33 @@ function dc_long(
         end
     end
 
-    H = Hermitian(maybe_to_device(H), :U)
-    Jα = Hermitian(maybe_to_device(Jα), :U)
+    H = Hermitian(maybe_to_device(H), :U) # will be split
+    Jα = Hermitian(maybe_to_device(Jα), :U) # will be split
 
 
     # generate all views
-    ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:2)
-    ψr_views = map(x -> view(ψr, :, :, x), 1:length(NC_all))
+    ψall_r_views = map(x -> maybe_split_view(ψall_r, :, :, x; split_hint=Jα), 1:2)
+    ψr_views = map(x -> maybe_split_view(ψr, :, :, x; split_hint=nothing), 1:length(NC_all)) # no need to split this one, unless broadcast_assign is modified later
 
     # right start
     view(ψ0, :, 1:NR) .= psi_in
     @debug "$(size(psi_in)), $(size(Jα)), $(size(ψ0))"
-    @sync mul!(view(ψ0, :, (NR+1):(2*NR)), Jα, psi_in)
+    ψw = maybe_split_view(ψ0, :, (NR+1):(2*NR); split_hint=Jα)
+    @sync mul!(ψw, Jα, psi_in)
 
     # loop over r
     n = 1 # THIS IS g0, T0, etc.
-    @sync ψall_r_views[r2_i(n)] .= ψ0
-    # From here on, ψ0 can be used as work space.
-    ψw = view(ψ0, :, 1:NR)
+    @sync assignto!(ψall_r_views[r2_i(n)], ψ0)
+    # From here on, ψw can be used as work space.
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
+    broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max) ######
 
     n = 2
     @sync mul!(ψall_r_views[r2_i(n)], H, ψall_r_views[r2_ip(n)])
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
+    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max) ######
 
     n_enum = 3:NC_max
     if verbose >= 1
@@ -137,6 +137,11 @@ end
     return cond / H_rescale_factor
 end
 
+function broadcast_assign!(y_all::MDCuArray, y_all_views, x::MDCuArray, c_all::MDCuArray, idx_max::Int)
+    # primitive version: this step only uses one GPU
+    # TODO: multigpu improvement
+    broadcast_assign!(y_all.arr, y_all_views, x.arr, c_all.arr, idx_max)
+end
 
 function broadcast_assign!(y_all::CuArray, y_all_views, x::CuArray, c_all::CuArray, idx_max::Int)
     # only working on 1:idx_max of NC_all

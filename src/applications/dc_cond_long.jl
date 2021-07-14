@@ -39,8 +39,8 @@ function dc_long(
         Tn_e = chebyshevT_accurate.((0:NC_max-1)', Ef_tilde)
     end
 
-    kernel1_Tn = kernel[1].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e
-    kernel2_Tn = kernel[2].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e
+    kernel1_Tn = dt_cplx.(kernel[1].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e)
+    kernel2_Tn = dt_cplx.(kernel[2].((0:NC_max-1)', NC_all) .* hn.((0:NC_max-1)') .* Tn_e)
 
     kernel_Tn = maybe_to_device([kernel1_Tn kernel2_Tn])
 
@@ -58,7 +58,7 @@ function dc_long(
             if !ishermitian(H)
                 @warn "Hamiltonian is not Hermitian. Please make sure it is upper triangular."
             end
-            if !ishermitian(Jx)
+            if !ishermitian(Jα)
                 @warn "Current operator is not Hermitian. Please make sure it is upper triangular."
             end
         end
@@ -80,6 +80,8 @@ function dc_long(
     # loop over r
     n = 1 # THIS IS g0, T0, etc.
     @sync ψall_r_views[r2_i(n)] .= ψ0
+    # From here on, ψ0 can be used as work space.
+    ψw = view(ψ0, :, 1:NR)
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
     broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
@@ -116,15 +118,17 @@ function dc_long(
         cond = on_host_zeros(dt_cplx, length(NC_all))
         #Threads.@threads for NCi in 1:length(NC_all)
         for (NCi, NC_orig_i) in enumerate(NC_sort_i) #1:length(NC_all)
-            @sync cond[NC_orig_i] = dot(ψr_views_1[NCi], Jα, ψr_views_2[NCi])
+            mul!(ψw, Jα, ψr_views_2[NCi])
+            @sync cond[NC_orig_i] = dot(ψr_views_1[NCi], ψw)
         end
         cond ./= NR
     else
         cond = on_host_zeros(dt_cplx, length(NC_all), NR)
         #Threads.@threads for NCi in 1:length(NC_all)
         for (NCi, NC_orig_i) in enumerate(NC_sort_i)
+            mul!(ψw, Jα, ψr_views_2[NCi])
             for NRi in 1:NR
-                @sync cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα * view(ψr_views_2[NCi], :, NRi))
+                @sync cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi), view(ψw, :, NRi))
             end
         end
     end

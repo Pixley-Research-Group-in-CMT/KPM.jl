@@ -14,6 +14,7 @@ struct MDCuSplits{T}
     split_list::Array{Int64, 1}
 end
 Base.eltype(x::MDCuSplits{T}) where {T} = T
+Base.size(x::MDCuSplits) = sum(map(collect, map(size, x.arrs)))
 
 struct MDCuCopy{T}
     Ns::Int64
@@ -29,17 +30,32 @@ end
 Base.eltype(x::MDCuArray{T}) where {T} = T
 Base.collect(x::MDCuArray) = collect(x.arr)
 Base.view(x::MDCuArray, args...) = view(x.arr, args...)
-maybe_split_view(x::MDCuArray, args...; split_hint=nothing) = _create_UM_arr(view(x.arr, args...); split_hint=split_hint)
+function maybe_split_view(x::MDCuArray, args...; split_hint=nothing)
+    if isnothing(split_hint)
+        MDCuArray(view(x.arr, args...), nothing)
+    else
+        arr = view(x.arr, args...)
+        MDCuArray(arr, _prepare_workspace(arr, split_hint))
+    end
+end
 maybe_split_view(x::AbstractArray, args...; split_hint=nothing) = view(x, args...)
-function assignto!(dst, src::AbstractArray)
+Base.size(x::MDCuArray) = size(x.arr)
+
+function assignto!(dst::AbstractArray, src::AbstractArray)
     dst .= src
 end
-function assignto!(dst, src::MDCuArray)
+function assignto!(dst::MDCuArray, src::MDCuArray)
+    dst.arr .= src.arr
+end
+function assignto!(dst::MDCuArray, src::AbstractArray)
+    dst.arr .= src
+end
+function assignto!(dst::AbstractArray, src::MDCuArray)
     dst .= src.arr
 end
 
 
-function LinearAlgebra.Hermitian(x::MDCuSplits)
+function LinearAlgebra.Hermitian(x::MDCuSplits, args...)
     @warn "Hermitian is bypassed for MDCuSplits"
     return x # do nothing when asking to be Hermitian
 end
@@ -84,9 +100,10 @@ function _prepare_workspace(arr_out::CuArray, As::Union{OpsSplits, MDCuSplits, A
     Ns = length(collect(devices()))
     arr_w = Array{CuArray{et}}(undef, Ns)
 
+    @debug "$(size(arr_out))"
     for (gpu, dev) in enumerate(devices())
         device!(dev)
-        arr_w[gpu] = CUDA.zeros(et, split_list[gpu], NR)
+        arr_w[gpu] = CUDA.zeros(et, split_list[gpu], size(arr_out, 2))
     end
 
     for (gpu, dev) in enumerate(devices())
@@ -96,7 +113,7 @@ function _prepare_workspace(arr_out::CuArray, As::Union{OpsSplits, MDCuSplits, A
     return MDCuCopy{et}(Ns, arr_w, split_list)
 end
 
-function LinearAlgebra.mul!(Ascu::MDCuSplits, arr_in::MDCuArray, arr_out::MDCuArray; w::MDCuCopy=nothing)
+function LinearAlgebra.mul!(arr_out::MDCuArray, Ascu::MDCuSplits, arr_in::MDCuArray, α::Number, β::Number; w::Union{MDCuCopy, Nothing}=nothing)
 
     if isnothing(w)
         if !isnothing(arr_out.work_space)
@@ -110,7 +127,7 @@ function LinearAlgebra.mul!(Ascu::MDCuSplits, arr_in::MDCuArray, arr_out::MDCuAr
     @. arr_out.arr = 0
     @sync for (gpu, dev) in enumerate(devices())
         device!(dev)
-        mul!(w.arrs[gpu], Ascu.arrs[gpu], arr_in.arr)
+        mul!(w.arrs[gpu], Ascu.arrs[gpu], arr_in.arr, α, β)
     end
 
 

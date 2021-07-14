@@ -73,9 +73,10 @@ function dc_long(
     ψr_views = map(x -> maybe_split_view(ψr, :, :, x; split_hint=nothing), 1:length(NC_all)) # no need to split this one, unless broadcast_assign is modified later
 
     # right start
-    view(ψ0, :, 1:NR) .= psi_in
-    @debug "$(size(psi_in)), $(size(Jα)), $(size(ψ0))"
+    @debug "$(typeof(view(ψ0, :, 1:NR)))"
+    assignto!(view(ψ0, :, 1:NR),  psi_in)
     ψw = maybe_split_view(ψ0, :, (NR+1):(2*NR); split_hint=Jα)
+    @debug "$(size(psi_in)), $(size(Jα)), $(size(ψ0)), $(typeof(ψw)), $(typeof(Jα)), $(typeof(psi_in))"
     @sync mul!(ψw, Jα, psi_in)
 
     # loop over r
@@ -84,13 +85,13 @@ function dc_long(
     # From here on, ψw can be used as work space.
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max) ######
+    broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], maybe_split_view(kernel_Tn, :, n), NC_idx_max) ######
 
     n = 2
     @sync mul!(ψall_r_views[r2_i(n)], H, ψall_r_views[r2_ip(n)])
     #NC_idx = findall(i -> i >= n, NC_all)
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max) ######
+    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], maybe_split_view(kernel_Tn, :, n), NC_idx_max) ######
 
     n_enum = 3:NC_max
     if verbose >= 1
@@ -106,23 +107,26 @@ function dc_long(
 
             #NC_idx = findall(i -> i >= n, NC_all)
             NC_idx_max = findlast(i -> i >= n, NC_all)
-            @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
+            @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], maybe_split_view(kernel_Tn, :, n), NC_idx_max)
         end
     end
 
 @time begin    
-    ψr_views_1 = map(x -> view(ψr, :, 1:NR, x), 1:length(NC_all))
-    ψr_views_2 = map(x -> view(ψr, :, (NR+1):(2*NR), x), 1:length(NC_all))
 
     if avg_NR
+        ψr_views_1 = map(x -> view(ψr, :, 1:NR, x), 1:length(NC_all))
+        ψr_views_2 = map(x -> maybe_split_view(ψr, :, (NR+1):(2*NR), x), 1:length(NC_all))
+
         cond = on_host_zeros(dt_cplx, length(NC_all))
         #Threads.@threads for NCi in 1:length(NC_all)
         for (NCi, NC_orig_i) in enumerate(NC_sort_i) #1:length(NC_all)
             mul!(ψw, Jα, ψr_views_2[NCi])
-            @sync cond[NC_orig_i] = dot(ψr_views_1[NCi], ψw)
+            @sync cond[NC_orig_i] = dot(ψr_views_1[NCi], view(ψw, :, :))
         end
         cond ./= NR
     else
+        ψr_views_1 = map(x -> maybe_split_view(ψr, :, 1:NR, x), 1:length(NC_all))
+        ψr_views_2 = map(x -> maybe_split_view(ψr, :, (NR+1):(2*NR), x), 1:length(NC_all))
         cond = on_host_zeros(dt_cplx, length(NC_all), NR)
         #Threads.@threads for NCi in 1:length(NC_all)
         for (NCi, NC_orig_i) in enumerate(NC_sort_i)
@@ -208,20 +212,4 @@ function finer_mt_broadcast_assign!(y_all, x, c_all, idx)
     end
 
     return nothing
-end
-
-function _split_vector(x, N)
-    pieces = _partition_l(length(x), N)
-    lb, ub = _get_lb_ub(pieces)
-
-    return map((l,u)->view(x, l:u), lb, ub)
-    
-end
-
-function _partition_l(l, N)
-    each = cld(l, N) - 1
-    res = fill(each, N)
-    excess = l - each*N
-    res[1:excess].+=1;
-    return res
 end

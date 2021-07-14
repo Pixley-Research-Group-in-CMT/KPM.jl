@@ -11,10 +11,20 @@ function whichcore()
     end
     return false
 end
-whichcore()
+multigpu=0
+if whichcore()
+    Ngpu = length(collect(devices()))
+    if Ngpu > 1
+        multigpu = Ngpu
+        @info "multi gpu: $(multigpu)"
+    else
+        multigpu = 0
+    end
+end
 
 
-function maybe_to_device(x::Union{SparseMatrixCSC, CUSPARSE.CuSparseMatrixCSC}, expect_eltype=dt_num; multigpu=0)
+
+function maybe_to_device(x::Union{SparseMatrixCSC, CUSPARSE.CuSparseMatrixCSC}, expect_eltype=dt_num; multigpu=multigpu)
     if !(eltype(x) <: expect_eltype)
         @warn "element type $(eltype(x)) is not in expect_eltype=$(expect_eltype). Not casting, though."
     end
@@ -47,7 +57,7 @@ function maybe_to_device(x::OpsSplits)
     return _broadcast_operator_splits(x)
 end
 
-function maybe_to_device(x::Union{Array, CuArray}, expect_eltype=dt_num; multigpu=0, split_hint=nothing)
+function maybe_to_device(x::Union{Array, CuArray}, expect_eltype=dt_num; multigpu=multigpu, split_hint=nothing)
     if !(eltype(x) <: expect_eltype)
         @warn "element type $(eltype(x)) is not in expect_eltype=$(expect_eltype). Not casting, though."
     end
@@ -80,7 +90,7 @@ maybe_to_host(x::CuArray) = Array(x)
 maybe_to_host(x::CUSPARSE.CuSparseMatrixCSC) = SparseMatrixCSC(x)
 maybe_to_host(x::Number) = x
 
-function maybe_on_device_rand(args...; multigpu=0, split_hint=nothing)
+function maybe_on_device_rand(args...; multigpu=multigpu, split_hint=nothing)
     if CUDA.has_cuda()
         if multigpu > 0
             return _create_UM_arr(rand(args...); split_hint=split_hint)
@@ -93,7 +103,7 @@ function maybe_on_device_rand(args...; multigpu=0, split_hint=nothing)
 end
 
 
-function maybe_on_device_zeros(args...)
+function maybe_on_device_zeros(args...; multigpu=multigpu, split_hint=nothing)
     if CUDA.has_cuda()
         if multigpu > 0
             return _create_UM_arr(rand(args...); split_hint=split_hint)

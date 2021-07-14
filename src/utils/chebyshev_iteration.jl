@@ -59,9 +59,10 @@ end
 
 # SubArray and CuArray are all pointer-like
 # V_out is V_pp
+# ## EXPERIMENT: MDCuArray support
 function chebyshev_iter_single(H,
-                               V_pp_in::CuArray,
-                               V_p_in::CuArray)
+                               V_pp_in::Union{CuArray, MDCuArray},
+                               V_p_in::Union{CuArray, MDCuArray})
     mul!(V_pp_in, H, V_p_in, 2.0+0im, -1.0+0im)
     return nothing
 end

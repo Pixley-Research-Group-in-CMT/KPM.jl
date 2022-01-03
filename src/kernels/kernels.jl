@@ -16,7 +16,7 @@ function mu2D_apply_kernel_and_h(mu, NC::Int64, kernel::Function; dims::Array=[1
     kernels = [kernel, kernel]
     mu2D_apply_kernel_and_h(mu, NC, kernels; dims=dims)
 end
-function mu2D_apply_kernel_and_h(mu, NC::Int64, kernels::Array{Function, 1}; dims::Array=[1, 2])
+function mu2D_apply_kernel_and_h(mu, NC::Int64, kernels::Array{T} where {T<:Function}; dims::Array=[1, 2])
     μtilde = maybe_to_device(complex(copy(mu)))
     #println("size of mu: ", size(μtilde))
     if length(dims) == 0

@@ -98,7 +98,8 @@ function d_cpge(Gamma, NC, ω₁::Float64, ω₂::Float64, ϵ::Float64; δ=1e-5,
     kernel_vec .*= hn.(n_grid)
     kernel_vec = maybe_to_device(kernel_vec)
     @debug "size of kernel_vec is $(size(kernel_vec)), expecting $(NC)"
-
+    
+    n_grid = convert(Vector{Float64}, n_grid)
     n_grid = maybe_to_device(n_grid)
 
     # each of the following have size (NC,)

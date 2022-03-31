@@ -1,4 +1,4 @@
-function ldos(
+function ldos_mu(
                  H, NC::Int64, site::Int64;
                  kwargs...
                 )

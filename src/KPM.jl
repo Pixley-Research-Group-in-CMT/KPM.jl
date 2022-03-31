@@ -13,7 +13,7 @@ include("kernels/kernels.jl")
 include("moment.jl")
 
 include("applications/dos.jl")
-include("applications/ldos.jl")
+include("applications/ldos_mu.jl")
 include("applications/conductivity.jl")
 include("applications/cpge.jl")
 

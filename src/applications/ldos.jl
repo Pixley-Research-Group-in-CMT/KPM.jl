@@ -1,5 +1,5 @@
 function kpm_ldos(
-                 H, NC::Int64, site::Int64;
+                 H_norm, NC::Int64, site::Int64;
                  kwargs...
                 )
     NH = size(H_norm)[1]
@@ -7,7 +7,7 @@ function kpm_ldos(
     sitevector = zeros(NH,1)
     sitevector[site] = 1
     psi_in = sitevector #KPM.maybe_on_device(sitevector) 
-    KPM.kpm_1d!(H, NC, 1, NH, mu, psi_in; kwargs...)
+    KPM.kpm_1d!(H_norm, NC, 1, NH, mu, psi_in; kwargs...)
     mu = dropdims(mu, dims=1)
     mu = real.(mu)
     return mu

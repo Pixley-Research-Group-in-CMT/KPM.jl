@@ -1,7 +1,7 @@
 name = "KPM"
 uuid = "479eba37-df18-4d3d-9d60-66182c7f1954"
-authors = ["Yixing Fu"]
-version = "0.1.0"
+authors = ["Yixing Fu, Angkun Wu"]
+version = "0.1.1"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
@@ -19,6 +19,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 
 [compat]
 Arpack = "0.4"

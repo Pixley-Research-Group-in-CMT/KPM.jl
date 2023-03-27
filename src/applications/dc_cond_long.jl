@@ -1,5 +1,6 @@
 using Logging
 using LinearAlgebra
+using NVTX
 ## Special algorithm for longitudinal DC conductivity
 
 

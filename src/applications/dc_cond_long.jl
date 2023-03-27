@@ -1,5 +1,6 @@
 using Logging
 using LinearAlgebra
+using CUDA
 ## Special algorithm for longitudinal DC conductivity
 
 

@@ -7,9 +7,15 @@
 
 
 ## Installation
+  First, install the old version of CUDA with
   ```
-  ] add https://github.com/yixingfu/KPM.jl
+  ] add CUDA@3.12.0
   ```
+  Then, add the KPM package
+  ```
+  ] add https://github.com/angkunwu/KPM.jl
+  ```
+  If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPM.
 
   This is an [unregistered package](https://docs.julialang.org/en/v1.0/stdlib/Pkg/#Adding-unregistered-packages-1) for now, so we need to use github URL to add package. Github username and password needed.
 

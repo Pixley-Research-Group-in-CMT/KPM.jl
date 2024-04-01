@@ -7,23 +7,23 @@
 
 ## Capability
 
-Kernel Polynomial Method (KPM) for vairous quantities:
+Kernel Polynomial Method (KPM) for various quantities:
 
-KPM for density of states (DOS):
+KPM for density of states (DOS) (RevModPhys.78.275):
 ```
 mu = KPM.KPM_1d(H_norm, NC, NR)
 E, rho = KPM.dos(mu, D)
 ```
 where `H_norm` is the scaled Hamiltonian with original half bandwidth `D`, `NC` is the expansion order and `NR` is the number of random vectors for stochastic estimation of trace in KPM. The function `KPM.dos` evaluate the DOS `rho` with energy points `E`.
 
-KPM for DC conductivity (linear response):
+KPM for DC conductivity (linear response)  (RevModPhys.78.275):
 ```
 μ2Dxy = KPM.kpm_2d(H_norm, Jx, Jy, NC, NR, NH)
 dσxyE = KPM.d_dc_cond(μ2Dxy, D, Evals)
 ```
 where  `Jx, Jy` are current operators and `NH` is the dimensionality of the Hamiltonian `H_norm`. The function `KPM.d_dc_cond` evaluate the differential first-order conductivity `dσxyE` with given energy points `Evals`, integration of which (with Fermi distribution) gives DC conductivity at certain temperature.
 
-KPM for frequency-dependent nonlinear response :
+KPM for frequency-dependent nonlinear response (arXiv:1810.03732):
 ```
 mu_3d_xyz = KPM.kpm_3d(H_norm, Jx, Jy, Jz, NC, NR, NH)
 dchi_xyz = KPM.d_cpge(mu_3d_xyz, NC, w1, w2, E)

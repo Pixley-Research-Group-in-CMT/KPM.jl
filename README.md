@@ -38,7 +38,7 @@ where `dchi_xyz` is the differential second-order conductivity, `w1, w2` are two
   ```
   Then, add the KPM package
   ```
-  ] add https://github.com/angkunwu/KPM.jl
+  ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
   ```
   If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPM.
 

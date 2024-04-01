@@ -5,6 +5,14 @@
 [![Build Status](https://github.com/yixingfu/KPM.jl/workflows/CI/badge.svg)](https://github.com/yixingfu/KPM.jl/actions)
 [![Coverage](https://codecov.io/gh/yixingfu/KPM.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yixingfu/KPM.jl)
 
+## Capability
+
+Kernel Polynomial Method (KPM) for vairous quantities:
+KPM for density of states (DOS):
+```
+mu = KPM.KPM_1d(H_norm, NC, NR)
+```
+where `H_norm` is the scaled Hamiltonian, `NC` is the expansion order and `NR` is the number of random vectors for stochastic estimation of trace in KPM.
 
 ## Installation
   First, install the old version of CUDA with

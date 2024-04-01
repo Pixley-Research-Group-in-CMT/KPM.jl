@@ -28,7 +28,7 @@ KPM for frequency-dependent nonlinear response (arXiv:1810.03732):
 mu_3d_xyz = KPM.kpm_3d(H_norm, Jx, Jy, Jz, NC, NR, NH)
 dchi_xyz = KPM.d_cpge(mu_3d_xyz, NC, w1, w2, E)
 ```
-where `dchi_xyz` is the differential second-order conductivity, `w1, w2` are two frequencies and `E` is the energy to evaluate, integration of which (with Fermi distribution) gives non at certain temperature.
+where `dchi_xyz` is the differential second-order conductivity (arXiv:2312.14244), `w1, w2` are two frequencies and `E` is the energy to evaluate, integration of which (with Fermi distribution) gives non at certain temperature.
 
 
 ## Installation

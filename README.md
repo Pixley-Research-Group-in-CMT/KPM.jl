@@ -11,7 +11,7 @@ Kernel Polynomial Method (KPM) for various quantities:
 
 KPM for density of states (DOS) (RevModPhys.78.275):
 ```
-mu = KPM.KPM_1d(H_norm, NC, NR)
+mu = KPM.kpm_1d(H_norm, NC, NR)
 E, rho = KPM.dos(mu, D)
 ```
 where `H_norm` is the scaled Hamiltonian with original half bandwidth `D`, `NC` is the expansion order and `NR` is the number of random vectors for stochastic estimation of trace in KPM. The function `KPM.dos` evaluate the DOS `rho` with energy points `E`.

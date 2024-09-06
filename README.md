@@ -40,8 +40,22 @@ where `dchi_xyz` is the differential second-order conductivity (arXiv:2312.14244
   ```
   ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
   ```
-  If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPM.
-
+  If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPM. Also recent Julia updates change GPUcompiler, which also affect the old version CUDA. To downgrade Julia, we recommend users to install `juliaup` (https://github.com/JuliaLang/juliaup), i.e., 
+  ```
+  brew install juliaup
+  ```
+Then, to add old julia to your system
+```
+juliaup add 1.9.1
+```
+You can start the specific version by
+```
+julia +1.9.1
+```
+We also recommend to create a separate file for KPM related projects say `KPMenv` and start julia with the separate environment
+```
+julia +1.9.1 --project=./KPMenv
+```
   This is an [unregistered package](https://docs.julialang.org/en/v1.0/stdlib/Pkg/#Adding-unregistered-packages-1) for now, so we need to use github URL to add package. Github username and password needed.
 
   After installation, you should be able to import the package by

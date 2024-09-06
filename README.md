@@ -52,7 +52,7 @@ You can start the specific version by
 ```
 julia +1.9.1
 ```
-We also recommend to create a separate file for KPM related projects say `KPMenv` and start julia with the separate environment
+We also recommend to create a separate directory for KPM related projects say `KPMenv` and start julia with the separate environment
 ```
 julia +1.9.1 --project=./KPMenv
 ```

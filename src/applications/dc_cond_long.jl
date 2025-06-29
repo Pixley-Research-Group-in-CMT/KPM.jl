@@ -140,9 +140,10 @@ function broadcast_assign!(y_all::CuArray, y_all_views, x::CuArray, c_all::CuArr
     block_count_x = cld(cld(length(x), 32), 512)
     block_count_y = idx_max
     @debug "block_count=$(block_count_x),$(block_count_y); c_all=$(c_all); idx=1:$(idx_max)"
-    NVTX.@range "mainrange" begin
-        CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
-    end
+    #CUDA.NVTX.@range "mainrange" begin
+    #    CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
+    #end
+    CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
     return nothing
 end
 function broadcast_assign!(y_all::Array, y_all_views::Array{T, 1} where {T<:Union{Array, SubArray}}, x::Union{Array, SubArray}, c_all::Array, idx_max::Int)

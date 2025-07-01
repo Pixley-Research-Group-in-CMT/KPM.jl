@@ -52,6 +52,57 @@ function kpm_1d end
 """
 $(METHODLIST)
 
+The in-place version of 1D KPM with current operator.
+Calculate the moments μ defined in KPM: Γ_n^α = Tr[J_α T_n(H)]. 
+Output is saved in `mu`.
+
+- `H`           -- Hamiltonian. A matrix or sparse matrix.
+
+- `Jα`          -- Current operator. A matrix or sparse matrix.
+
+- `NC`          -- Integer. the cut off dimension.
+
+- `NR`          -- Integer. number of random vectors used for KPM evaluation.
+
+- `NH`          -- Integer. the size of hamiltonian.
+
+- `mu_all`      -- Array. Output for each random vector. Size (NR, NC). 
+
+- `psi_in`      -- Array (optional). Input array on the right side. A ket.
+
+"""
+function kpm_1d_current! end
+
+"""
+$(METHODLIST)
+
+The simple version of 1D KPM with current operator that returns the moment.
+Calculate moments Γ_n^α = Tr[J_α T_n(H)].
+
+- `H`           -- Hamiltonian. A matrix or sparse matrix
+
+- `Jα`          -- Current operator. A matrix or sparse matrix
+
+- `NC`          -- Integer. the cut off dimension
+
+- `NR`          -- Integer. number of random vectors used for KPM evaluation
+
+- `NH`          -- Integer. the size of hamiltonian
+
+- `psi_in`      -- Optional. Allow setting random vector manually.
+
+- `force_norm`  -- Boolean, Optional. Apply normalization.
+
+- `verbose`     -- Integer. Default is 0. Enables progress bar if set `verbose=1`.
+
+- `avg_output`  -- Boolean. Default is true. Whether to output averaged μ (hence size NC) or separate μs (size NR x NC).
+
+"""
+function kpm_1d_current end
+
+"""
+$(METHODLIST)
+
 In place KPM2D. This is also the main building block for KPM_2D. This
 method only provide NR=1.
 
@@ -390,6 +441,154 @@ function kpm_1d!(
     # with different left and right.
     throw("unimplemented.")
 end
+
+kpm_1d_current(H, Jα, NC::Int64, NR::Int64; kwargs...) = kpm_1d_current(H, Jα, NC, NR, size(H)[1]; kwargs...)
+function kpm_1d_current(
+                H, Jα, NC::Int64, NR::Int64, NH::Int64;
+                psi_in=nothing,
+                psi_in_l=nothing,
+                psi_in_r=nothing,
+                force_norm=false,
+                verbose=0,
+                avg_output=true,
+                NR_parallel=true
+               )
+    
+  
+    mu_all = on_host_zeros(dt_cplx, NR, NC) # this mu is never large enough to be worth putting on GPU
+    if isnothing(psi_in)
+        if (!isnothing(psi_in_l) | !isnothing(psi_in_r))
+            @assert (!isnothing(psi_in_l) & !isnothing(psi_in_r)) "must set both `psi_in_l` and `psi_in_r` or neither."
+            if force_norm
+                normalize_by_col(psi_in_l, NR)
+                normalize_by_col(psi_in_r, NR)
+            end
+            if NR_parallel
+                kpm_1d_current!(H,Jα, NC, NR, NH, mu_all, psi_in_l, psi_in_r; verbose=verbose)
+            else
+                for NRi = 1:NR
+                    kpm_1d_current!(H,Jα, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in_l, NRi:NRi, :), view(psi_in_r, NRi:NRi, :); verbose=verbose)
+                end
+            end
+        else
+            if NR_parallel
+                kpm_1d_current!(H,Jα, NC, NR, NH, mu_all; verbose=verbose)
+            else
+                for NRi = 1:NR
+                    kpm_1d_current!(H,Jα, NC, 1, NH, view(mu_all, NRi:NRi, :); verbose=verbose)
+                end
+            end
+        end
+    else
+        @assert (isnothing(psi_in_l) & isnothing(psi_in_r)) "must either set `psi_in` or set `psi_in_l` and `psi_in_r`, but not both."
+        if force_norm
+            normalize_by_col(psi_in, NR)
+        end
+        if NR_parallel
+            kpm_1d_current!(H,Jα, NC, NR, NH, mu_all, psi_in; verbose=verbose)
+        else
+            for NRi = 1:NR
+                kpm_1d_current!(H,Jα, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in, NRi:NRi, :); verbose=verbose)
+            end
+        end
+    end
+
+    if avg_output
+        return maybe_to_host(real.(
+                                   dropdims(sum(mu_all, dims=1),
+                                            dims=1)./NR
+                                  )
+                            )
+    end
+
+    return mu
+end
+
+function kpm_1d_current!(
+                 H, Jα, NC::Int64, NR::Int64, NH::Int64,
+                 mu_all,
+                 psi_in;
+                 verbose=0,
+                 # working arrays
+                 α_all = maybe_on_device_zeros(dt_cplx, NH, NR, 2),
+                 Jα_psi = maybe_on_device_zeros(dt_cplx, NH, NR),
+                )
+    @assert size(mu_all) == (NR, NC)
+    H = maybe_to_device(H)
+    Jα = maybe_to_device(Jα)
+
+    psi_in_size = size(psi_in)
+    @assert (psi_in_size == (NH, NR)) "Invalid `psi_in` with size $(psi_in_size). Expecting $(NH), $(NR)"
+
+    # Initialize right vector for Chebyshev iteration: T_0(H)|ψ> = |ψ>
+    α_all[:, :, 1] = maybe_to_device(psi_in)
+
+    # Apply current operator to left vector once: <ψ|J_α
+    mul!(Jα_psi, Jα, α_all[:, :, 1])
+
+    mu0 = on_host_zeros(dt_cplx, NR)
+    # Compute first moment: <ψ|J_α T_0(H)|ψ> = <ψ|J_α|ψ>
+    for NRi in 1:NR
+        mu0[NRi] = dot((@view Jα_psi[:, NRi]), (@view α_all[:, NRi, 1]))
+    end
+    mu_all[:, 1] .= mu0
+    # Compute T_1(H)|ψ> = H|ψ>
+    mul!((@view α_all[:, :, 2]), H, (@view α_all[:, :, 1]))
+    mu1 = on_host_zeros(dt_cplx, NR)
+    # Compute second moment: <ψ|J_α T_1(H)|ψ>
+    for NRi in 1:NR
+        mu1[NRi] = dot((@view Jα_psi[:, NRi]), (@view α_all[:, NRi, 2]))
+    end
+    mu_all[:, 2] .= mu1
+
+    n_enum = 3:NC
+    if verbose >= 1
+        println("NC = $(NC)")
+        n_enum = ProgressBar(n_enum)
+    end
+
+    α_views = [view(α_all, :, :, 1), view(α_all, :, :, 2)]
+
+    ip = 2
+    ipp = 1
+    for n=n_enum
+        # Chebyshev iteration: T_{n+1}(H) = 2H T_n(H) - T_{n-1}(H)
+        chebyshev_iter_single(H, α_views[ipp], α_views[ip])
+        # cannot use the moment doubling trick here.
+        # Compute moments: <ψ|J_α T_{2n-1}(H)|ψ> and <ψ|J_α T_{2n}(H)|ψ>
+        for NRi in 1:NR
+            mu_all[NRi, n] = dot((@view Jα_psi[:, NRi]), (@view α_views[ipp][:, NRi]))
+        end
+
+        ip = 3-ip
+        ipp = 3-ipp
+    end
+
+    return nothing
+end
+
+function kpm_1d_current!(
+                 H, Jα, NC::Int64, NR::Int64, NH::Int64,
+                 mu;
+                 kwargs...
+                )
+    psi_in = exp.(maybe_on_device_rand(dt_real, NH, NR) * (2.0im * pi))
+    normalize_by_col(psi_in, NR)
+    kpm_1d_current!(H, Jα, NC, NR, NH, mu, psi_in; kwargs...)
+end
+
+function kpm_1d_current!(
+                 H,Jα, NC::Int64, NR::Int64, NH::Int64,
+                 mu,
+                 psi_in_l, psi_in_r;
+                 kwargs...
+                )
+    # with different left and right.
+    throw("unimplemented.")
+end
+
+
+
 
 
 

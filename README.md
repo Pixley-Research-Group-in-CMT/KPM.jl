@@ -1,10 +1,6 @@
 # KPM
 
-[![Stable](https://img.shie  Install the package with the latest CUDA.jl:
-  ```
-  ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
-  ```
-  The package now supports CUDA.jl versions 4 and 5, making it compatible with modern Julia packages.s-stable-blue.svg)](https://yixingfu.github.io/KPM.jl/stable)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://yixingfu.github.io/KPM.jl/stable)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://yixingfu.github.io/KPM.jl/dev)
 [![Build Status](https://github.com/yixingfu/KPM.jl/workflows/CI/badge.svg)](https://github.com/yixingfu/KPM.jl/actions)
 [![Coverage](https://codecov.io/gh/yixingfu/KPM.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yixingfu/KPM.jl)
@@ -62,6 +58,12 @@ julia +1.9.1 --project=./KPMenv
 ```
 -->
   This is an [unregistered package](https://docs.julialang.org/en/v1.0/stdlib/Pkg/#Adding-unregistered-packages-1) for now, so we need to use github URL to add package. Github username and password needed. We recently updated the CUDA dependence and there is no need to constrain the compatible version now. 
+
+Install the package with the latest CUDA.jl:
+  ```
+  ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
+  ```
+  The package now supports CUDA.jl versions 4 and 5, making it compatible with modern Julia packages.
 
   After installation, you should be able to import the package by
   ```

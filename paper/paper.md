@@ -15,6 +15,10 @@ authors:
     orcid: 0000-0002-9470-8848
     ## equal-contrib: true # (This is how you can denote equal contributions between multiple authors)
     affiliation: 1
+  - name: Justin H. Wilson
+    orcid: 0000-0001-6903-0417
+    ## equal-contrib: true # (This is how you can denote equal contributions between multiple authors)
+    affiliation: "4, 5"
   - name: J. H. Pixley
     orcid: 0000-0002-3109-640X
     corresponding: true
@@ -26,6 +30,10 @@ affiliations:
    index: 2
  - name: Department of Physics and Astronomy, University of Tennessee, Knoxville, Knoxville, Tennessee, 37996, USA
    index: 3
+ - name: Department of Physics and Astronomy, Louisiana State University, Baton Rouge, LA 70803, USA
+   index: 4
+ - name: Center for Computation and Technology, Louisiana State University, Baton Rouge, LA 70803, USA
+   index: 5
 date: 1 February 2026
 bibliography: paper.bib
 

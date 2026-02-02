@@ -43,7 +43,7 @@ bibliography: paper.bib
 
 The Kernel Polynomial Method (KPM) is a numerical technique for approximating spectral and response functions of large Hermitian operators without full diagonalization [@RevModPhys.78.275]. KPM expands spectral functions in Chebyshev polynomials and evaluates them via recursive matrix-vector multiplications, using stochastic trace estimation with random vectors to compute traces efficiently. Carefully chosen kernels (e.g., Jackson) suppress Gibbs oscillations and improve convergence of the truncated Chebyshev series. Because the dominant cost is sparse matrix–vector products, KPM scales (nearly) linearly with system size and can be applied to extremely large sparse Hamiltonians to compute quantities such as the density of states (DOS), local density of states (LDOS), and frequency-dependent response functions [@joao2019].
 
-`KPM.jl` is a Julia implementation of KPM for tight-binding models in condensed matter physics, providing a high-performance, user-friendly toolbox. `KPM.jl` targets large sparse Hamiltonians, integrates with `CUDA.jl` for automatic GPU acceleration when available, and is designed for scalability and ease of integration into Julia-based workflows for large-scale spectral and transport calculations.
+`KPM.jl` is a Julia implementation [@bezanson2017julia] of KPM for tight-binding models in condensed matter physics, providing a high-performance, user-friendly toolbox. `KPM.jl` targets large sparse Hamiltonians, integrates with `CUDA.jl` for automatic GPU acceleration when available, and is designed for scalability and ease of integration into Julia-based workflows for large-scale spectral and transport calculations.
 
 # Statement of need
 
@@ -56,7 +56,7 @@ It fills the gap between low-level C/Fortran libraries and interactive, reproduc
 4.  **Integration:** As a Julia package, it easily interfaces with other tools in the Julia ecosystem for Hamiltonian generation and data analysis.
 
 In condensed matter physics, understanding the effects of disorder, interactions, and complex lattice geometries often requires numerical simulations of very large Hamiltonians. Traditional ED methods for computing the full spectrum are limited to relatively small system sizes (typically $N \sim 10^4$ states), which can be insufficient to resolve the spectral features of disordered systems or incommensurate structures like twisted bilayer graphene.
-`KPM.jl` is especially useful for studies of disorder, Moiré systems, and topological materials where large system sizes ($N \sim 10^7$ states) are essential to capture realistic spectral and transport behavior.
+`KPM.jl` is especially useful for studies of disorder, moiré systems, and topological materials where large system sizes ($N \sim 10^7$ states) are essential to capture realistic spectral and transport behavior.
 
 
 
@@ -64,11 +64,11 @@ In condensed matter physics, understanding the effects of disorder, interactions
 
 `KPM.jl` is designed with modularity and performance in mind. The package operates on sparse Hamiltonians and computes Chebyshev moments using stochastic trace estimation with random vectors. The core functionality is divided into three main tiers corresponding to the complexity of the response function:
 
-* **Density of States (1D):** The `kpm_1d` function computes the Chebyshev moments for the DOS. It supports stochastic estimation using multiple random vectors (`NR`) and allows users to supply custom input vectors to compute the LDOS. The moments are converted to the spectral density $\rho(E)$ using `KPM.dos`.
+* **Density of States (1D):** The `KPM.kpm_1d` function computes the Chebyshev moments for the DOS. It supports stochastic estimation using multiple random vectors (`NR`) and allows users to supply custom input vectors to compute the LDOS. The moments are converted to the spectral density $\rho(E)$ using `KPM.dos`.
 
-* **Linear Response (2D):** For transport properties like DC conductivity, `kpm_2d` calculates the moments required for the Kubo-Greenwood formula involving two current operators ($J_x, J_y$). The function `d_dc_cond` processes these moments to obtain the energy-dependent conductivity $\sigma_{xy}(E)$.
+* **Linear Response (2D):** For transport properties like DC conductivity, `KPM.kpm_2d` calculates the moments required for the Kubo-Greenwood formula involving two current operators ($J_x, J_y$). The function `KPM.d_dc_cond` processes these moments to obtain the energy-dependent conductivity $\sigma_{xy}(E)$.
 
-* **Nonlinear Response (3D):** The package includes specialized routines (`kpm_3d`) for frequency-dependent nonlinear responses, such as the Circular Photogalvanic Effect (CPGE). This involves computing moments for three operators ($J_x, J_y, J_z$) and post-processing them (`d_cpge`) to extract the second-order conductivity $\chi_{xyz}(\omega_1, \omega_2)$.
+* **Nonlinear Response (3D):** The package includes specialized routines (`KPM.kpm_3d`) for frequency-dependent nonlinear responses, such as the Circular Photogalvanic Effect (CPGE). This involves computing moments for three operators ($J_x, J_y, J_z$) and post-processing them (`KPM.d_cpge`) to extract the second-order conductivity $\chi_{xyz}(\omega_1, \omega_2)$.
 
 The software automatically detects available hardware and offloads matrix-vector multiplications to a GPU if a compatible CUDA device is present (`KPM.whichcore()`), ensuring efficient performance on modern clusters.
 
@@ -91,7 +91,6 @@ These applications demonstrate the package's capability to tackle cutting-edge p
 
 # Acknowledgements
 
-We acknowledge the support of NSF Career Grant No. DMR-1941569 and the Alfred P. Sloan
-Foundation through a Sloan Research Fellowship. 
+We acknowledge the support of NSF Career Grant No. DMR-1941569 and the Alfred P. Sloan Foundation through a Sloan Research Fellowship. J.H.W. acknowledges support from the National Science Foundation under Grant Number DMR-2238895.
 
 # References

@@ -8,3 +8,5 @@ Manifest.toml
 /HPCtemp
 
 /paper/jats
+
+.DS_Store

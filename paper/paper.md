@@ -117,10 +117,13 @@ mask = abs.(E) .< 2
 rho_exact[mask] = 1.0 ./ (π * sqrt.(4 .- E[mask].^2))
 
 # plot the DOS
-plot(E, rho)
+plot(E, rho, xlabel="E", ylabel="DOS", label="KPM")
 plot!(E, rho_exact, lw=1, ls=:dash, label="Analytic")
 ```
 
+The final DOS is shown in Figure \ref{fig:example}. Discrepancies between the KPM and analytic results arise from the finite system size, the truncated KPM expansion order, and stochastic trace estimation error.
+
+![Density of states for a simple 1D tight-binding chain: KPM (solid) vs. analytic (dashed). \label{fig:example}](dosplot.pdf){width=80%}
 
 # Research impact statement
 

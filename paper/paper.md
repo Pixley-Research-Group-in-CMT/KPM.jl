@@ -123,7 +123,7 @@ plot!(E, rho_exact, lw=1, ls=:dash, label="Analytic")
 
 The final DOS is shown in Figure \ref{fig:example}. Discrepancies between the KPM and analytic results arise from the finite system size, the truncated KPM expansion order, and stochastic trace estimation error.
 
-![Density of states for a simple 1D tight-binding chain: KPM (solid) vs. analytic (dashed). \label{fig:example}](dosplot.pdf){width=80%}
+![Density of states for a simple 1D tight-binding chain $L=10^4$: KPM (solid) with variouns expansion order $N_C=16,32,1024$ vs. analytic (dashed). The number of random vectors for the stochastic trace is $N_R=10$. \label{fig:example}](dosplot.pdf){width=80%}
 
 # Research impact statement
 
@@ -142,6 +142,10 @@ The final DOS is shown in Figure \ref{fig:example}. Discrepancies between the KP
 These applications demonstrate the package's capability to tackle cutting-edge problems in condensed matter theory.
 
 
+# AI usage disclosure
+
+Github Copilot were used to update the CUDA usage. No generative AI tools were used in the writing
+of this manuscript, or the preparation of supporting materials.
 
 # Acknowledgements
 

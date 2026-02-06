@@ -79,6 +79,7 @@ The following minimal example computes the DOS of a 1‑D tight‑binding chain 
 ```julia
 using KPM
 using LinearAlgebra
+using SparseArrays
 using Plots
 
 # Simple dense 1D tight-binding Hamiltonian (periodic)
@@ -101,12 +102,8 @@ nE = 1000             # output energy grid points
 
 H = tb1dchain(N)
 # Rescale H -> (-1, 1)
-Emax, Emin = 2, -2
-a = (Emax + Emin) / 2          # center (0 for this model)
-b = 1.01 * (Emax - Emin) / 2   # slightly enlarged half-width for safety
-
-Ind = Matrix{Float64}(I, N, N)
-H_norm = (H .- a*Ind) ./ b # scaled Hamiltonian
+Hsparse = sparse(H.*(1+0*1im)) # make the Hamiltonian sparse under complex number
+b, H_norm = KPM.normalizeH(Hsparse)
 
 # Compute Chebyshev moments (DOS)
 mu = KPM.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
@@ -114,8 +111,14 @@ mu = KPM.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
 # Reconstruct DOS on a grid and map energies back to physical scale
 E, rho = KPM.dos(mu, b;kernel = KPM.JacksonKernel, N_tilde=nE)
 
+# Analytical DOS 
+rho_exact = zeros(length(E))
+mask = abs.(E) .< 2
+rho_exact[mask] = 1.0 ./ (π * sqrt.(4 .- E[mask].^2))
+
 # plot the DOS
 plot(E, rho)
+plot!(E, rho_exact, lw=1, ls=:dash, label="Analytic")
 ```
 
 

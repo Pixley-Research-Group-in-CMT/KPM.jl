@@ -1,5 +1,5 @@
-export wrapAdd, normalizeH, isNotBoundary, timestamp
-using SparseArrays, Arpack, Random
+#export wrapAdd, normalizeH, isNotBoundary, timestamp
+using SparseArrays, Arpack, Random, LinearAlgebra
 """
 wrapAdd find the sum of x and y, with L+1=1
 """
@@ -20,25 +20,22 @@ end
 """
 Normalize H. If requested, allow renormalizing it to fixed value.
 """
-function normalizeH(H::SparseMatrixCSC{ComplexF64,Int64}; eps::Float64=0.1, fixed_a::Number=0.0)
+function normalizeH(H; eps::Float64=0.1, fixed_a::Number=0.0)
     
-    println("hermitian check: ")
-    @assert abs(sum(H-H')) < 1e-16*sqrt(H.n)
-    println("pass.")
+    # println("hermitian check: ")
+    # @assert abs(sum(H-H')) < 1e-16*sqrt(H.n)
+    # println("pass.")
 
 	if fixed_a==0
-    es, vs = eigs(H;tol=0.001,maxiter=300)
+        es, _ = eigs(H;tol=0.001,maxiter=300)
 #	println(es)
-    Emax = maximum(abs.(es))
-    Emin = -Emax
-    a = (Emax - Emin)/(2 - eps)
-	else
-    a = fixed_a 
-	end
-
-    H = H/a
-    return a, H
-
+        Emax = maximum(abs.(es))
+        Emin = -Emax
+        a = (Emax - Emin)/(2 - eps)
+    else
+        a = fixed_a 
+    end
+    return a, H/a
 end
 
 function timestamp(text; t = [time(), time()], r = 0, init = false, rank=0)

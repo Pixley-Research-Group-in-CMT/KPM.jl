@@ -17,15 +17,15 @@ function tb1dchain(N::Integer; t::Real=1.0)
 end
 
 # Parameters
-N = 10000               # system size
+N = 1000               # system size
 NC = 1024               # Chebyshev order
 NR = 10               # number of random vectors for stochastic trace
 nE = 1000             # output energy grid points
 
 H = tb1dchain(N)
 # Rescale H -> (-1, 1)
-Hsparse = sparse(H.*(1+0*1im)) # make the Hamiltonian sparse under complex number
-b, H_norm = KPM.normalizeH(Hsparse)
+#Hsparse = sparse(H.*(1+0*1im)) # make the Hamiltonian sparse under complex number
+b, H_norm = KPM.normalizeH(H)
 
 # Compute Chebyshev moments (DOS)
 mu = KPM.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)

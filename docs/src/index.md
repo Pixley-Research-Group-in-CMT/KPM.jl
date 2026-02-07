@@ -6,6 +6,124 @@ CurrentModule = KPM
 
 ```@index
 ```
+
+## Installation
+
+This package is currently unregistered. Install the latest version directly from GitHub:
+
+```bash
+] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
+```
+
+Notes:
+
+- The package supports CUDA.jl versions 4 and 5.
+- After installation import with:
+
+```julia
+using KPM
+```
+
+- To update the package run:
+
+```bash
+] update KPM
+```
+and provide your GitHub username/password if prompted.
+
+For more details see the project's README.
+
+## Quick examples
+
+### 1) Density of States (DOS) — concise example
+
+```julia
+using KPM, LinearAlgebra, SparseArrays, Plots
+
+# small 1D tight-binding (periodic)
+function tb1dchain(N; t=1.0)
+  H = spzeros(N,N)
+  for i in 1:N-1
+    H[i,i+1] = -t; H[i+1,i] = -t
+  end
+  H[1,N] = -t; H[N,1] = -t
+  return H
+end
+
+N = 1000
+NC = 256
+NR = 4
+H = tb1dchain(N)
+# rescale H to (-1,1)
+a, Hn = KPM.normalizeH(H)
+mu = KPM.kpm_1d(Hn, NC, NR)
+E, rho = KPM.dos(mu, a; kernel=KPM.JacksonKernel, N_tilde=500)
+
+plot(E, rho, xlabel="E", ylabel="DOS", legend=false)
+savefig("docs/dos_example.pdf")
+```
+
+Reference (full example):
+
+```1:54:paper/example.jl
+using KPM
+using LinearAlgebra
+using SparseArrays
+
+# Simple dense 1D tight-binding Hamiltonian (periodic)
+function tb1dchain(N::Integer; t::Real=1.0)
+    H = zeros(Float64, N, N)
+    for i in 1:(N-1)
+        H[i, i+1] = -t
+        H[i+1, i] = -t
+    end
+    H[1, N] = -t
+    H[N, 1] = -t
+    return H
+end
+```
+
+### 2) Optical conductivity (graphene) — concise example
+
+```julia
+using KPM, Plots
+include("examples/GrapheneModel.jl") # provides GrapheneLattice
+
+L = 60
+Ham, Jx, Jy, Jxx, Jxy, Jyy = GrapheneLattice(L, L)
+a = 3.5
+Hn = Ham / a
+NC = 256; NR = 6
+mu2d = zeros(ComplexF64, NC, NC)
+psi = exp.(2π*1im*rand(Hn.n, NR))
+KPM.normalize_by_col(psi, NR)
+KPM.kpm_2d!(Hn, Jy, Jy, NC, NR, Hn.n, mu2d, psi, psi)
+
+# compute a sample optical conductivity (2D contribution) at ω=0.5
+ω = 0.5
+σ2 = KPM.d_optical_cond2(mu2d, NC, ω, 0.0)
+println("Optical conductivity (2D part) at ω=", ω, " : ", σ2)
+```
+
+Reference (full example):
+
+```1:131:examples/OpticalGraphene.jl
+using Plots
+using LaTeXStrings
+using KPM
+
+include("GrapheneModel.jl") # Include the GrapheneLattice function and related structures
+
+function full_optical_condT0(mu1d,mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPM.JacksonKernel,
+    h = 0.001, Emin= -0.8, Emax = 0.0
+    )
+    # This function is used to calculate the full optical conductivity
+    # by combining the 1D and 2D contributions.
+    x_all = collect(Emin:h:Emax)
+    y_1 = zeros(ComplexF64, length(x_all))
+    y_2 = zeros(ComplexF64, length(x_all))
+```
+
 # Moment calculation
 
 The first step in KPM is calculating moments using Hamiltonians (and current operators for conductivity, etc.).
@@ -51,18 +169,6 @@ The Lorentz kernel is useful for Green's functions because it preserves certain 
 LorentzKernels
 ```
 
-# Installation
-
-This package is currently unregistered, so install it from GitHub:
-
-```bash
-] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
-```
-
-The package supports recent CUDA.jl versions (4 and 5). After installation, import with:
-
-# full API reference
-
 ## API overview
 
 Below is a concise list of the main public APIs provided by the package.
@@ -96,5 +202,5 @@ Below is a concise list of the main public APIs provided by the package.
 For more details see the full API reference below.
 
 ```@autodocs
-Modules = [KPM, KPM.Utils]
+Modules = [KPM]
 ```

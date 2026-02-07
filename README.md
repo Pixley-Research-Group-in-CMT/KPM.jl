@@ -1,7 +1,6 @@
 # KPM
 
 [![Build Status](https://github.com/angkunwu/KPMsub.jl/workflows/CI/badge.svg)](https://github.com/angkunwu/KPMsub.jl/actions)
-[![CI](https://github.com/angkunwu/KPMsub.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/angkunwu/KPMsub.jl/actions/workflows/ci.yml?query=branch%3Amain)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://angkunwu.github.io/KPMsub.jl/dev/)
 [![Julia](https://img.shields.io/badge/julia-1.10-blue.svg)](https://julialang.org)
 

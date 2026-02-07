@@ -12,7 +12,7 @@ The first step in KPM is calculating moments using Hamiltonians (and current ope
 Functions with `!` are more efficient in-place version; those without `!` are convenient methods based on the
 in-place methods.
 
-```@docs
+```@docs; canonical=false
 kpm_1d
 kpm_1d!
 kpm_2d
@@ -28,7 +28,7 @@ default (random) input vectors. Then use the output (moment `mu`) to calculate d
 There is also an option to pass Hamiltonian directly to `dos`, which does the
 moment calculation automatically.
 
-```@docs
+```@docs; canonical=false
 dos
 ```
 
@@ -43,18 +43,18 @@ such that when `n==0`, returns `1`; when `n==N-1`, returns small number close to
 
 We implement JacksonKernel and LorentzKernels in the package.
 Jackson Kernel is the default kernel for most application.
-```@docs
+```@docs; canonical=false
 JacksonKernel
 ```
 
 Lorentz Kernel is good for Green functions as it respects symmetry. The function `LorentzKernels`
 takes parameter λ and returns a kernel function.
-```@docs
+```@docs; canonical=false
 LorentzKernels
 ```
 
 
 # full API reference
 ```@autodocs
-Modules = [KPM]
+Modules = [KPM, KPM.Utils]
 ```

@@ -358,7 +358,7 @@ function kpm_1d(
                             )
     end
 
-    return mu
+    return mu_all
 end
 
 function kpm_1d!(

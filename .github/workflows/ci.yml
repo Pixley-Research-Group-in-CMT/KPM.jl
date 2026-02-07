@@ -16,10 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install LLVM 15
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 15
+          echo "LLVM_CONFIG=/usr/bin/llvm-config-15" >> $GITHUB_ENV
       - name: Setup Julia
         uses: julia-actions/setup-julia@v1
         with:
-          version: '1.9'
+          version: '1.10'
       - name: Install dependencies and run tests
         run: julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.test()'
 
@@ -29,10 +35,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+      - name: Install LLVM 15
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 15
+          echo "LLVM_CONFIG=/usr/bin/llvm-config-15" >> $GITHUB_ENV
       - name: Setup Julia
         uses: julia-actions/setup-julia@v1
         with:
-          version: '1.9'
+          version: '1.10'
       - name: Build docs
         run: julia --project=docs -e 'using Pkg; Pkg.instantiate(); include("docs/make.jl")'
 

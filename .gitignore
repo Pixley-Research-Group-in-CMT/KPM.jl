@@ -1,12 +1,61 @@
+## =========================
+## Julia / package artifacts
+## =========================
 **/*.jl.*.cov
 **/*.jl.cov
 **/*.jl.*.mem
+*.info
+lcov.info
+
+# Package-level Manifest is usually not committed for libraries
+/Manifest.toml
+
+# Build/deps artifacts (common in packages that use BinaryBuilder/Artifacts)
+/deps/deps.jl
+/deps/deps*.jl
+/deps/build.log
+/deps/usr/
+/deps/downloads/
+
+## =========================
+## Docs (Documenter.jl)
+## =========================
 /docs/build/
+/docs/site/
+
+## =========================
+## Local scratch / project-specific
+## =========================
 temp_test
-Manifest.toml
-
 /HPCtemp
-
 /paper/jats
 
+## =========================
+## Editor / IDE artifacts
+## =========================
+.vscode/
+.idea/
+*.iml
+
+*~
+*.swp
+*.swo
+*.tmp
+*.bak
+
+## =========================
+## OS-generated files
+## =========================
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk

@@ -501,7 +501,7 @@ function kpm_1d_current(
                             )
     end
 
-    return mu
+    return mu_all
 end
 
 function kpm_1d_current!(
@@ -681,10 +681,10 @@ function kpm_2d!(
     mul!(Jψ0r, Jα, ψ0r)
 
     reps = Integer(ceil(NC/arr_size - 1))
-    println(typeof(H))
-    println(typeof(Jα))
-    println(typeof(ψall_r))
-    println(typeof(ψall_l))
+    # println(typeof(H))
+    # println(typeof(Jα))
+    # println(typeof(ψall_r))
+    # println(typeof(ψall_l))
 
 
     for rep in 1:(reps+1)

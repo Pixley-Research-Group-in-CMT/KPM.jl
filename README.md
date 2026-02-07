@@ -1,9 +1,11 @@
 # KPM
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://yixingfu.github.io/KPM.jl/stable)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://yixingfu.github.io/KPM.jl/dev)
-[![Build Status](https://github.com/yixingfu/KPM.jl/workflows/CI/badge.svg)](https://github.com/yixingfu/KPM.jl/actions)
-[![Coverage](https://codecov.io/gh/yixingfu/KPM.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yixingfu/KPM.jl)
+[![Build Status](https://github.com/angkunwu/KPMsub.jl/workflows/CI/badge.svg)](https://github.com/angkunwu/KPMsub.jl/actions)
+[![CI](https://github.com/angkunwu/KPMsub.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/angkunwu/KPMsub.jl/actions/workflows/ci.yml?query=branch%3Amain)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://angkunwu.github.io/KPMsub.jl/dev/)
+[![Julia](https://img.shields.io/badge/julia-1.10-blue.svg)](https://julialang.org)
+
+
 
 ## Capability
 

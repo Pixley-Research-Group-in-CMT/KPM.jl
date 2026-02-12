@@ -800,7 +800,7 @@ function kpm_3d!(
                  sub_ψall_l=maybe_on_device_zeros(dt_cplx, NH, NR, arr_size),
                  sub_ψw=maybe_on_device_zeros(dt_cplx, NH, NR,)
                 )
-    #println("Developing")
+    println("Developing")
 
     # do not enforce normalization
     @assert (size(psi_in_r) == (NH, NR)) "`psi_in_r` has size $(size(psi_in_r)) but expecting $(NH), $(NR)"

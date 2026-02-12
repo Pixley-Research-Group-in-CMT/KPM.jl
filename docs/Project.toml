@@ -3,4 +3,3 @@ Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 KPM = "479eba37-df18-4d3d-9d60-66182c7f1954"
 
 [compat]
-julia = ">= 1.10"

@@ -1,6 +1,8 @@
 using Test
 using SparseArrays
 
+const PROJECT_TOML_TEXT = read(joinpath(@__DIR__, "..", "Project.toml"), String)
+
 @testset "optional CUDA defaults" begin
     @test KPM.whichcore() == false
 
@@ -14,4 +16,7 @@ using SparseArrays
 
     z = KPM.maybe_on_device_zeros(Float64, 2, 2)
     @test z isa Array{Float64, 2}
+
+    @test occursin("[weakdeps]", PROJECT_TOML_TEXT)
+    @test occursin("KPMCUDAExt = \"CUDA\"", PROJECT_TOML_TEXT)
 end

@@ -111,8 +111,9 @@ done by default in `kpm_1d`, or you may supply your own input vectors.
 
 ## Notes about GPU:
 
-This package uses GPU *automatically* when GPU is available. No action needed. To check whether GPU is enabled, run
+CUDA support is now an optional package extension. CPU usage works without installing CUDA.jl. If CUDA.jl is present, KPM loads CUDA-specialized methods automatically.
+
+To check whether GPU is enabled, run
 ```
   KPM.whichcore()
 ```
-It is also recommended to add this line right after importing `KPM` in julia code to guarantee using GPU correctly.

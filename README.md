@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/angkunwu/KPMsub.jl/workflows/CI/badge.svg)](https://github.com/angkunwu/KPMsub.jl/actions)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://angkunwu.github.io/KPMsub.jl/dev/)
-[![Julia](https://img.shields.io/badge/julia-1.10-blue.svg)](https://julialang.org)
+[![Julia](https://img.shields.io/badge/julia-1.12-blue.svg)](https://julialang.org)
 
 
 
@@ -58,7 +58,8 @@ We also recommend to create a separate directory for KPM related projects say `K
 julia +1.9.1 --project=./KPMenv
 ```
 -->
-  This is an [unregistered package](https://docs.julialang.org/en/v1.0/stdlib/Pkg/#Adding-unregistered-packages-1) for now, so we need to use github URL to add package. Github username and password needed. We recently updated the CUDA dependence and there is no need to constrain the compatible version now. 
+
+This is an [unregistered package](https://docs.julialang.org/en/v1.0/stdlib/Pkg/#Adding-unregistered-packages-1), so use the GitHub URL to add it. We recently updated CUDA compatibility and there is no need to constrain to legacy CUDA versions.
 
 Install the package with the latest CUDA.jl:
   ```
@@ -74,7 +75,7 @@ Install the package with the latest CUDA.jl:
   ```
   ] update KPM
   ```
-  and type github username / password when prompted. 
+  and authenticate with GitHub only if prompted by your local setup. 
   
 
 ## Getting started with DOS
@@ -111,8 +112,11 @@ done by default in `kpm_1d`, or you may supply your own input vectors.
 
 ## Notes about GPU:
 
-This package uses GPU *automatically* when GPU is available. No action needed. To check whether GPU is enabled, run
+<!-- This package uses GPU *automatically* when GPU is available. No action needed. To check whether GPU is enabled, run -->
+CUDA support is now an optional package extension. CPU usage works without installing CUDA.jl. If CUDA.jl is present, KPM loads CUDA-specialized methods automatically.
+
+To check whether GPU is enabled, run
 ```
   KPM.whichcore()
 ```
-It is also recommended to add this line right after importing `KPM` in julia code to guarantee using GPU correctly.
+<!-- It is also recommended to add this line right after importing `KPM` in julia code to guarantee using GPU correctly. -->

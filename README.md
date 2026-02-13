@@ -120,3 +120,9 @@ To check whether GPU is enabled, run
   KPM.whichcore()
 ```
 <!-- It is also recommended to add this line right after importing `KPM` in julia code to guarantee using GPU correctly. -->
+To use CUDA GPU, you need to load CUDA first, then load KPM
+```
+  using CUDA
+  using KPM
+```
+Then the module will load extension code.

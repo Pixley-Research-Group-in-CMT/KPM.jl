@@ -5,6 +5,8 @@ using KPM
 using CUDA
 using CUDA.CUSPARSE
 using SparseArrays
+import LinearAlgebra: mul! 
+using LinearAlgebra
 
 function KPM.whichcore()
     if CUDA.has_cuda()
@@ -14,33 +16,40 @@ function KPM.whichcore()
     return false
 end
 
-function KPM.maybe_to_device(x::Union{SparseMatrixCSC, CuSparseMatrixCSC}, expect_eltype=KPM.dt_num)
-    if !(eltype(x) <: expect_eltype)
+function KPM.maybe_to_device(x::SparseMatrixCSC, expect_eltype=nothing)
+    if !(eltype(x) <: KPM.dt_num)
         @warn "element type $(eltype(x)) is not in expect_eltype=$(expect_eltype). Not casting, though."
+    end
+    if expect_eltype === nothing
+        expect_eltype = eltype(x)
     end
 
     if CUDA.has_cuda()
-        if x isa CuSparseMatrixCSC
-            return x
-        else
-            return CuSparseMatrixCSC{eltype(x)}(x)
-        end
+        # convert CPU CSC -> GPU CSR (CuSparse)
+        return CuSparseMatrixCSR{expect_eltype}(x)
     end
     return x
 end
 
-function KPM.maybe_to_device(x::Union{Array, CuArray}, expect_eltype=KPM.dt_num)
-    if !(eltype(x) <: expect_eltype)
+function KPM.maybe_to_device(x::CuSparseMatrixCSR, expect_eltype=nothing)
+    return x
+end
+
+function KPM.maybe_to_device(x::Array, expect_eltype=nothing)
+    if !(eltype(x) <: KPM.dt_num)
         @warn "element type $(eltype(x)) is not in expect_eltype=$(expect_eltype). Not casting, though."
+    end
+    if expect_eltype === nothing
+        expect_eltype = eltype(x)
     end
 
     if CUDA.has_cuda()
-        if x isa CuArray
-            return x
-        else
-            return CuArray{eltype(x)}(x)
-        end
+        return CuArray{expect_eltype}(x)
     end
+    return x
+end
+
+function KPM.maybe_to_device(x::CuArray, expect_eltype=nothing)
     return x
 end
 
@@ -103,9 +112,19 @@ function chebyshev_lin_trans_cuda!(x_grid, n_grid, mu_tilde, Nx, Nn, y)
     return nothing
 end
 
-function KPM.chebyshev_iter(H, ψall::CuArray{T, 2} where T, n::Int64)
+function KPM.chebyshev_iter(H,
+                        ψall::Union{Array{T, 2}, CuArray{T, 2}} where T,
+                        n::Int64)
     for i in 3:n
         KPM.chebyshev_iter_single(H, ψall, i-2, i-1, i)
+    end
+end
+
+function KPM.chebyshev_iter(H,
+                        ψviews::Array{T} where {T <: Union{CuArray, SubArray}},
+                        n::Int64)
+    for i in 3:n
+        KPM.chebyshev_iter_single(H, ψviews[i-2], ψviews[i-1], ψviews[i])
     end
 end
 
@@ -129,6 +148,20 @@ end
 function KPM.chebyshev_iter_single(H, V_pp_in::CuArray, V_p_in::CuArray, V_out::CuArray)
     V_out .= V_pp_in
     KPM.chebyshev_iter_single(H, V_out, V_p_in)
+end
+
+function KPM.chebyshev_iter_wrap(H,
+                             ψall::Union{Array{T, 2}, CuArray{T, 2}} where T,
+                             n::Int64)
+    KPM.chebyshev_iter_single(H, ψall, n - 1, n, 1)
+    KPM.chebyshev_iter_single(H, ψall, n, 1, 2)
+end
+
+function KPM.chebyshev_iter_wrap(H,
+                             ψviews::Array{T} where {T <: Union{CuArray, SubArray}},
+                             n::Int64)
+    KPM.chebyshev_iter_single(H, ψviews[n-1], ψviews[n], ψviews[1])
+    KPM.chebyshev_iter_single(H, ψviews[n], ψviews[1], ψviews[2])
 end
 
 function KPM.broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
@@ -162,6 +195,18 @@ function KPM.broadcast_dot_1d_1d!(target::Union{Array, SubArray},
     for NRi in 1:NR
         target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha) + beta[NRi]
     end
+    return nothing
+end
+
+ArrTypes = Union{Array, SubArray, CuArray}
+function KPM.broadcast_dot_1d_1d!(target::Union{Array, SubArray},
+                              Vl_arr::Array{T} where {T <: ArrTypes},
+                              Vr_arr::Array{T} where {T <: ArrTypes};
+                              alpha::Number=1.0,
+                              beta::Union{Number, T} where {T <: ArrTypes}=0.0)
+    target .= dot.(Vl_arr, Vr_arr)
+    target .*= alpha
+    target .+= KPM.maybe_to_host(beta)
     return nothing
 end
 

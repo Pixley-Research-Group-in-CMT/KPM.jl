@@ -370,7 +370,7 @@ function kpm_1d!(
                  α_all = maybe_on_device_zeros(dt_cplx, NH, NR, 2),
                 )
     @assert size(mu_all) == (NR, NC)
-    H = maybe_to_device(H)
+    H = maybe_to_device(H,eltype(α_all))
 
     @assert (mod(NC, 2) == 0) "Invalid NC: NC should be even."
     NChalf = div(NC,2)
@@ -379,7 +379,7 @@ function kpm_1d!(
     @assert (psi_in_size == (NH, NR)) "Invalid `psi_in` with size $(psi_in_size). Expecting $(NH), $(NR)"
 
     α_all[:, :, 1] = maybe_to_device(psi_in)
-
+    
     mul!((@view α_all[:, :, 2]), H, (@view α_all[:, :, 1]))
     @. mu_all[:, 1] = 1.0
     mu1 = on_host_zeros(dt_cplx, NR)

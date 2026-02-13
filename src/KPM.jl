@@ -6,7 +6,7 @@ dt_num = Union{Float64, ComplexF64}
 
 try
 	import CUDA
-	include(joinpath(@__DIR__, "..", "ext", "KPMCUDAExt.jl"))
+        include(joinpath(@__DIR__, "..", "ext", "KPMCUDAExt.jl"))
 catch
 	# CUDA not available — leave CUDA extension unloaded
 end

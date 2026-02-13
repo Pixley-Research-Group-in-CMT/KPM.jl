@@ -1,4 +1,4 @@
-using CUDA
+#using CUDA
 using Statistics, LinearAlgebra
 
 """
@@ -72,16 +72,16 @@ function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
     return nothing
 end
 
-function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
-                                         Vls::Array{T, 1} where {T<:CuArray{Ts, 2} where Ts},
-                                         Vr::CuArray{T, 2} where T,
-                                         NR::Int64, NCcols::Int64;
-                                         NC0::Int64=1, NCstep::Int64=1
-                                        )
-    target[NC0:NCstep:NCcols] .= dot.(Vls[NC0:NCstep:NCcols], [Vr])
-    target ./= NR
-    return nothing
-end
+# function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
+#                                          Vls::Array{T, 1} where {T<:CuArray{Ts, 2} where Ts},
+#                                          Vr::CuArray{T, 2} where T,
+#                                          NR::Int64, NCcols::Int64;
+#                                          NC0::Int64=1, NCstep::Int64=1
+#                                         )
+#     target[NC0:NCstep:NCcols] .= dot.(Vls[NC0:NCstep:NCcols], [Vr])
+#     target ./= NR
+#     return nothing
+# end
 
 
 
@@ -104,18 +104,18 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
     return nothing
 end
 
-function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
-                              Vl::CuArray,
-                              Vr::CuArray,
-                              NR::Int64,
-                              alpha::Number=1.0,
-                              beta::Number=0.0)
-    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 1")
-    for NRi in 1:NR
-        target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta)
-    end
-    return nothing
-end
+# function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
+#                               Vl::CuArray,
+#                               Vr::CuArray,
+#                               NR::Int64,
+#                               alpha::Number=1.0,
+#                               beta::Number=0.0)
+#     println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 1")
+#     for NRi in 1:NR
+#         target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta)
+#     end
+#     return nothing
+# end
 
 function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               Vl::Union{Array, SubArray},
@@ -131,20 +131,21 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
 end
 
 
-function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
-                              Vl::CuArray,
-                              Vr::CuArray,
-                              NR::Int64,
-                              alpha::Number,
-                              beta::CuArray)
-    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 3")
-    for NRi in 1:NR
-        target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha) + beta[NRi]
-    end
-    return nothing
-end
+# function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
+#                               Vl::CuArray,
+#                               Vr::CuArray,
+#                               NR::Int64,
+#                               alpha::Number,
+#                               beta::CuArray)
+#     println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 3")
+#     for NRi in 1:NR
+#         target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha) + beta[NRi]
+#     end
+#     return nothing
+# end
 
-ArrTypes = Union{Array, SubArray, CuArray}
+# ArrTypes = Union{Array, SubArray, CuArray}
+ArrTypes = Union{Array, SubArray}
 function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               Vl_arr::Array{T} where {T <: ArrTypes},
                               Vr_arr::Array{T} where {T <: ArrTypes};

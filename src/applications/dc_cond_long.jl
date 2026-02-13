@@ -1,6 +1,6 @@
 using Logging
 using LinearAlgebra
-using CUDA
+#using CUDA
 ## Special algorithm for longitudinal DC conductivity
 
 
@@ -135,17 +135,17 @@ end
 end
 
 
-function broadcast_assign!(y_all::CuArray, y_all_views, x::CuArray, c_all::CuArray, idx_max::Int)
-    # only working on 1:idx_max of NC_all
-    block_count_x = cld(cld(length(x), 32), 512)
-    block_count_y = idx_max
-    @debug "block_count=$(block_count_x),$(block_count_y); c_all=$(c_all); idx=1:$(idx_max)"
-    #CUDA.NVTX.@range "mainrange" begin
-    #    CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
-    #end
-    CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
-    return nothing
-end
+# function broadcast_assign!(y_all::CuArray, y_all_views, x::CuArray, c_all::CuArray, idx_max::Int)
+#     # only working on 1:idx_max of NC_all
+#     block_count_x = cld(cld(length(x), 32), 512)
+#     block_count_y = idx_max
+#     @debug "block_count=$(block_count_x),$(block_count_y); c_all=$(c_all); idx=1:$(idx_max)"
+#     #CUDA.NVTX.@range "mainrange" begin
+#     #    CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
+#     #end
+#     CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
+#     return nothing
+# end
 function broadcast_assign!(y_all::Array, y_all_views::Array{T, 1} where {T<:Union{Array, SubArray}}, x::Union{Array, SubArray}, c_all::Array, idx_max::Int)
     if idx_max > Threads.nthreads()
         mt_broadcast_assign!(y_all_views, x, c_all, 1:idx_max)
@@ -155,18 +155,18 @@ function broadcast_assign!(y_all::Array, y_all_views::Array{T, 1} where {T<:Unio
 end
 
 
-function cu_broadcast_assign!(y_all, x, c_all)
-    # copying x to y_all (3D list, first two), multiplying by kernel_vecs_Tn
-    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x # thread id
-    stride = blockDim().x * gridDim().x # number of threads per block * number of blocks
-    c_idx = blockIdx().y
+# function cu_broadcast_assign!(y_all, x, c_all)
+#     # copying x to y_all (3D list, first two), multiplying by kernel_vecs_Tn
+#     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x # thread id
+#     stride = blockDim().x * gridDim().x # number of threads per block * number of blocks
+#     c_idx = blockIdx().y
 
-    x_l = length(x)
-    for i = index:stride:x_l
-        @inbounds y_all[i + (c_idx - 1) * x_l] += x[i] * c_all[c_idx]
-    end
-    return nothing
-end
+#     x_l = length(x)
+#     for i = index:stride:x_l
+#         @inbounds y_all[i + (c_idx - 1) * x_l] += x[i] * c_all[c_idx]
+#     end
+#     return nothing
+# end
 
 function mt_broadcast_assign!(y_all, x, c_all, idx)
     # copying x to y_all (list of list), multiplying by kernel_vecs_Tn

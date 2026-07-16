@@ -48,8 +48,13 @@ function Λnm(nm, ω; E_f=0.0, beta=Inf, δ=1e-5, λ=0.0, quad=(f->quadgk(f, -1+
     return I
 end
 
+"""
+Single-index (Λ_n, Eq. 41) contribution to the optical conductivity, Eq. 44,
+in units of -ie²/(ħ²ω). Note: unlike `kubo_bastin_cond`, this normalization
+has not been validated against exact diagonalization.
+"""
 function optical_cond1(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, Ω=ω/20)
-    # Equation 44, last term
+    # Single-index (Λ_n, Eq. 41) contribution to the optical conductivity, Eq. 44.
     # Gamma is calculated using Hamiltonian that is
     # normalized to have energy bounded by [-1, 1]
     #
@@ -58,7 +63,7 @@ function optical_cond1(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, �
     Gamma_tilde = muND_apply_kernel_and_h(Gamma, NC, kernel;dims=[1])
 
     # applying specified quad
-    nodes, weights = gausschebyshev(NC * 8)
+    nodes, weights = gausschebyshevt(NC * 8)
     quad(f) = (
                dot(weights, f.(nodes)),
                nothing # THIS SHOULD BE AN ESTIMATION OF ERROR
@@ -108,8 +113,13 @@ function d_optical_cond1(Gamma, NC, ϵ::Float64; δ=1e-5, λ=0.0, kernel=Jackson
 end
 
 
+"""
+Double-index (Λ_nm, Eq. 42) contribution to the optical conductivity, Eq. 44,
+in units of -ie²/(ħ²ω). Note: unlike `kubo_bastin_cond`, this normalization
+has not been validated against exact diagonalization.
+"""
 function optical_cond2(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, Ω=ω/20)
-    # Equation 44, last term
+    # Double-index (Λ_nm, Eq. 42) contribution to the optical conductivity, Eq. 44.
     # Gamma is calculated using Hamiltonian that is
     # normalized to have energy bounded by [-1, 1]
     #
@@ -118,7 +128,7 @@ function optical_cond2(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, �
     Gamma_tilde = mu2D_apply_kernel_and_h(Gamma, NC, kernel)
 
     # applying specified quad
-    nodes, weights = gausschebyshev(NC * 8)
+    nodes, weights = gausschebyshevt(NC * 8)
     quad(f) = (
                dot(weights, f.(nodes)),
                nothing # THIS SHOULD BE AN ESTIMATION OF ERROR

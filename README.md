@@ -1,128 +1,155 @@
 # KPM
 
-[![Build Status](https://github.com/angkunwu/KPMsub.jl/workflows/CI/badge.svg)](https://github.com/angkunwu/KPMsub.jl/actions)
-[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://angkunwu.github.io/KPMsub.jl/dev/)
-[![Julia](https://img.shields.io/badge/julia-1.12-blue.svg)](https://julialang.org)
+[![Build Status](https://github.com/Pixley-Research-Group-in-CMT/KPM.jl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Pixley-Research-Group-in-CMT/KPM.jl/actions)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://pixley-research-group-in-cmt.github.io/KPM.jl/dev/)
+[![Julia](https://img.shields.io/badge/julia-1.10%2B-blue.svg)](https://julialang.org)
 
+Kernel Polynomial Method (KPM) for tight-binding Hamiltonians: density of
+states, DC and optical conductivity, and second-order (CPGE) response, with
+optional CUDA GPU acceleration.
 
+## Conventions
+
+All quantities are expanded in Chebyshev polynomials of the rescaled
+Hamiltonian `H_norm = (H - b I) / a`, whose spectrum must lie inside (-1, 1).
+`KPM.normalizeH` computes the rescaling: by default it assumes a spectrum
+symmetric about zero and returns `(a, H_norm)`; with `center=true` it finds
+both spectral edges and returns `(a, b, H_norm)` — use this whenever the
+spectrum is not particle-hole symmetric.
+
+The DOS moments are `μ_n = Tr[T_n(H_norm)] / D`, estimated stochastically
+with `NR` random-phase vectors (unit-normalized columns), so that `μ_0 = 1`
+and the reconstructed DOS integrates to one:
+
+ρ(E) = Σₙ hₙ gₙ μₙ Tₙ(x) / (a π √(1-x²)),  x = (E - b)/a,
+
+with h₀ = 1, hₙ = 2 (n ≥ 1) and gₙ a damping kernel (Jackson by default).
+`kpm_1d` computes `NC` moments from `NC/2` matrix-vector recurrence steps
+(moment doubling), so `NC` must be even.
+
+## Typed front end (recommended)
+
+`KPM.rescale` packages the rescaling `(a, b)` together with the rescaled
+Hamiltonian, and the moment constructors record everything the reconstruction
+step needs (`a`, `b`, `NH`, `NR`), so none of that bookkeeping is threaded by
+hand — forgetting `b` or `NH` becomes impossible rather than silently wrong:
+
+```julia
+h = KPM.rescale(H; center=true)           # RescaledHamiltonian: H_norm, a, b
+m = KPM.dos_moments(h; NC=1024, NR=12)    # DosMoments (records a, b, NH, NR)
+E, rho = KPM.dos(m)                       # a, b applied automatically
+
+m2  = KPM.cond_moments(h, Jx, Jy; NC=256, NR=8)   # J from the UNRESCALED H (bond convention)
+σxy = KPM.kubo_bastin_cond(m2, Ef; area=A)        # in e²/h
+dσE = KPM.d_dc_cond(m2, E_values)                 # Kubo–Bastin integrand
+```
+
+For reproducible random-phase probe vectors pass an explicit RNG:
+`KPM.dos_moments(h; NC, NR, rng=Xoshiro(42))` (`using Random`). The raw-array
+interface below remains fully supported; the typed methods are thin wrappers
+over the same code paths. Typed wrappers for the optical (`optical_cond1/2`)
+and nonlinear (`cpge`) responses are not yet available — those functions take
+energies in rescaled units (see their docstrings).
 
 ## Capability
 
-Kernel Polynomial Method (KPM) for various quantities:
-
 KPM for density of states (DOS) (RevModPhys.78.275):
-```
+```julia
+a, H_norm = KPM.normalizeH(H)            # or a, b, H_norm = KPM.normalizeH(H; center=true)
 mu = KPM.kpm_1d(H_norm, NC, NR)
-E, rho = KPM.dos(mu, D)
+E, rho = KPM.dos(mu, a)                  # pass b=b for a centered rescaling
 ```
-where `H_norm` is the scaled Hamiltonian with original half bandwidth `D`, `NC` is the expansion order and `NR` is the number of random vectors for stochastic estimation of trace in KPM. The function `KPM.dos` evaluate the DOS `rho` with energy points `E`.
+where `NC` is the expansion order and `NR` is the number of random vectors
+for the stochastic trace.
 
-KPM for DC conductivity (linear response)  (RevModPhys.78.275):
-```
+KPM for DC conductivity (linear response) (RevModPhys.78.275; Garcia et al.,
+PRL 114, 116602):
+```julia
 μ2Dxy = KPM.kpm_2d(H_norm, Jx, Jy, NC, NR, NH)
-dσxyE = KPM.d_dc_cond(μ2Dxy, D, Evals)
+σxy = KPM.kubo_bastin_cond(μ2Dxy, a, Ef; b=b, NH=NH, area=A)   # in e²/h
+dσxyE = KPM.d_dc_cond(μ2Dxy, a, Evals; b=b)                     # integrand only
 ```
-where  `Jx, Jy` are current operators and `NH` is the dimensionality of the Hamiltonian `H_norm`. The function `KPM.d_dc_cond` evaluate the differential first-order conductivity `dσxyE` with given energy points `Evals`, integration of which (with Fermi distribution) gives DC conductivity at certain temperature.
+where `Jx, Jy` are bond-current operators `(J_α)_ij = H_ij (r_i - r_j)_α`
+and `NH` is the dimension of `H_norm`. `kubo_bastin_cond` returns the
+Kubo–Bastin conductivity at Fermi energy `Ef` in units of e²/h (`A` is the
+sample area); its normalization is validated against exact diagonalization
+(quantized Hall plateaus on the Haldane model — see
+`test/kubo_bastin_test.jl`).
 
 KPM for frequency-dependent nonlinear response (arXiv:1810.03732):
-```
+```julia
 mu_3d_xyz = KPM.kpm_3d(H_norm, Jx, Jy, Jz, NC, NR, NH)
 dchi_xyz = KPM.d_cpge(mu_3d_xyz, NC, w1, w2, E)
 ```
-where `dchi_xyz` is the differential second-order conductivity (arXiv:2312.14244), `w1, w2` are two frequencies and `E` is the energy to evaluate, integration of which (with Fermi distribution) gives non at certain temperature.
-
+where `dchi_xyz` is the differential second-order conductivity
+(arXiv:2312.14244) and `w1, w2` are the two drive frequencies.
 
 ## Installation
-<!--  First, install the old version of CUDA with
-  ```
-  ] add CUDA@3.12.0
-  ```
-  Then, add the KPM package
-  ```
-  ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
-  ```
-  If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPM. Also recent Julia updates change GPUcompiler, which also affect the old version CUDA. To downgrade Julia, we recommend users to install `juliaup` (https://github.com/JuliaLang/juliaup), i.e., 
-  ```
-  brew install juliaup
-  ```
-Then, to add old julia to your system
-```
-juliaup add 1.9.1
-```
-You can start the specific version by
-```
-julia +1.9.1
-```
-We also recommend to create a separate directory for KPM related projects say `KPMenv` and start julia with the separate environment
-```
-julia +1.9.1 --project=./KPMenv
-```
--->
 
-This is an [unregistered package](https://docs.julialang.org/en/v1.0/stdlib/Pkg/#Adding-unregistered-packages-1), so use the GitHub URL to add it. We recently updated CUDA compatibility and there is no need to constrain to legacy CUDA versions.
+This is an [unregistered package](https://pkgdocs.julialang.org/v1/managing-packages/#Adding-unregistered-packages); install it from the GitHub URL:
 
-Install the package with the latest CUDA.jl:
-  ```
-  ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
-  ```
-  The package now supports CUDA.jl versions 4 and 5, making it compatible with modern Julia packages.
+```
+] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
+```
 
-  After installation, you should be able to import the package by
-  ```
-      julia> using KPM
-  ```
-  without further action with github. To update, use
-  ```
-  ] update KPM
-  ```
-  and authenticate with GitHub only if prompted by your local setup. 
-  
+Requires Julia ≥ 1.10. Import with
+
+```julia
+using KPM
+```
+
+and update with `] update KPM`.
 
 ## Getting started with DOS
 
-  You will need Hamiltonian (`H_orig`).  
+You will need a Hamiltonian `H` (sparse or dense, Hermitian). The simplest
+call computes everything in one step:
 
-  The most simple way to calculate DOS is
-  ```
-  julia> E, rhoE = KPM.dos(H_orig)
-  ```
-
-  For many situation, you may need more control over the calculation. In such case, you may calculate moment first and then convert to DOS. 
-When calculating density of state, left and right input vectors for KPM need to be random and identical when both written as a ket. This is
-done by default in `kpm_1d`, or you may supply your own input vectors.
-
-  When using `kpm_1d` (and `kpm_1d!`, the in place version), Hamiltonian must be normalized. `H_norm` is the Hamiltonian normalized by `a` such that `H_orig * a == H_norm`, and `H_norm` has all eigenvalues in (-1, 1). Calculating `mu` and then DOS allows calculating DOS and its derivative at zero energy simpler.
-
-  ```
-  julia> NC = 1024; NR = 13;
-  julia> mu = KPM.KPM_1d(H_norm, NC, NR)
-  julia> rho_0 = KPM.dos0(mu, a)
-  julia> d2rho_0 = KPM.dos0(mu, a; dE_order=2)
-  julia> E_grid, rho_E = dos(mu, a, 50; E_range=[-1.5, 1.5])
-  ```
-
-  [DC conductivity](https://arxiv.org/abs/1410.8140) **WIP**:
-
-## Some practical tips:
-  * Store your github credentials (for convenience). See [this](https://docs.github.com/en/free-pro-team@latest/github/using-git/caching-your-github-credentials-in-git) instruction.
-  * When using Amarel, the interactive computing nodes do not have git available. Add/update package on login node. 
-  * When using RUPC, ssh to one of n34, n35, n40. Add package there. Load it once to compile. 
-  * If there is any permission issue when running, add permission: `chmod -r +x ~/.julia/`. For permission error when building, simply ignore.
-
-
-## Notes about GPU:
-
-<!-- This package uses GPU *automatically* when GPU is available. No action needed. To check whether GPU is enabled, run -->
-CUDA support is now an optional package extension. CPU usage works without installing CUDA.jl. If CUDA.jl is present, KPM loads CUDA-specialized methods automatically.
-
-To check whether GPU is enabled, run
+```julia
+E, rhoE = KPM.dos(H)
 ```
-  KPM.whichcore()
+
+For more control, rescale once, compute moments, then reconstruct — the
+moments object remembers the rescaling, so reconstruction needs no extra
+arguments:
+
+```julia
+h = KPM.rescale(H)                          # use center=true for asymmetric spectra
+m = KPM.dos_moments(h; NC=1024, NR=13)
+rho_0 = KPM.dos0(m)                         # DOS at E = h.b (the rescaling center)
+d2rho_0 = KPM.dos0(m; dE_order=2)           # and its second derivative
+E_grid, rho_E = KPM.dos(m; N_tilde=2048)
 ```
-<!-- It is also recommended to add this line right after importing `KPM` in julia code to guarantee using GPU correctly. -->
-To use CUDA GPU, you need to load CUDA first, then load KPM
+
+The same computation through the explicit `(a, b)` interface:
+
+```julia
+NC = 1024; NR = 13
+a, H_norm = KPM.normalizeH(H)
+mu = KPM.kpm_1d(H_norm, NC, NR)
+rho_0 = KPM.dos0(mu, a)                    # DOS at the band center
+d2rho_0 = KPM.dos0(mu, a; dE_order=2)      # and its second derivative
+E_grid, rho_E = KPM.dos(mu, a; N_tilde=2048)
 ```
-  using CUDA
-  using KPM
+
+When supplying your own input vectors to `kpm_1d`, the left and right vectors
+must be random and identical (as kets); this is what the default random-phase
+vectors do.
+
+## Notes about GPU
+
+CUDA support is an optional package extension: CPU usage works without
+CUDA.jl installed. To enable the GPU path, load CUDA before (or alongside)
+KPM in an environment where CUDA.jl is installed:
+
+```julia
+using CUDA
+using KPM
 ```
-Then the module will load extension code.
+
+The extension activates automatically when a functional GPU is present;
+check with
+
+```julia
+KPM.whichcore()   # true when the GPU path is active
+```

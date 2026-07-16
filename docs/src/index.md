@@ -33,6 +33,99 @@ and provide your GitHub username/password if prompted.
 
 For more details see the project's README.
 
+## Conventions and rescaling
+
+All quantities are expanded in Chebyshev polynomials of the rescaled
+Hamiltonian `H_norm = (H - b I)/a`, whose spectrum must lie inside (-1, 1).
+`KPM.normalizeH(H)` returns `(a, H/a)` assuming a spectrum symmetric about
+zero; `KPM.normalizeH(H; center=true)` finds both spectral edges and returns
+`(a, b, H_norm)` — use this for spectra that are not particle-hole symmetric,
+and pass `b` on to `dos(mu, a; b=b)`.
+
+The DOS moments are `μ_n = Tr[T_n(H_norm)]/D`, estimated with `NR`
+unit-normalized random-phase vectors, so `μ_0 = 1` and the DOS integrates to
+one. `kpm_1d` uses the moment-doubling trick (`NC` moments from `NC/2`
+matrix-vector recurrence steps), so `NC` must be even. The reconstruction is
+
+```
+ρ(E) = Σ_n h_n g_n μ_n T_n(x) / (a π √(1-x²)),   x = (E - b)/a,
+```
+
+with `h_0 = 1`, `h_n = 2` for `n ≥ 1`, and `g_n` a damping kernel
+(Jackson by default).
+
+### Conductivity units
+
+`KPM.kubo_bastin_cond(mu2D, a, Ef; b, NH, area)` returns the Kubo–Bastin DC
+conductivity **in units of e²/h**, where `mu2D = kpm_2d(H_norm, Jα, Jβ, NC,
+NR, NH)` and the current operators follow the bond convention
+`(J_α)_ij = H_ij (r_i - r_j)_α` (i.e. `J_α = iħ v_α`, as in
+`examples/GrapheneModel.jl`). `α` is the response direction, `β` the field
+direction, and `σ_xy = +1 e²/h` corresponds to Chern number `C = +1`. The
+absolute normalization — including the `1/a²` rescaling, the `D/A`
+trace-to-density conversion, and the sign — is validated against exact
+diagonalization on the Haldane model in `test/kubo_bastin_test.jl`
+(quantized Hall plateau to ~1%, longitudinal channel to ~5% with matched
+Lorentzian broadening).
+
+The older `dc_cond0` / `dc_cond_single` return bare Chebyshev Fermi-surface
+sums, proportional to the longitudinal Kubo–Greenwood conductivity but not
+in physical units; prefer `kubo_bastin_cond` for quantitative work.
+`d_dc_cond` returns the Kubo–Bastin integrand dσ(E), related to the physical
+conductivity by σ = -(2e²/h)·(D/(A·a))·∫dE f(E) dσ(E).
+
+The optical (`optical_cond1/2`) and nonlinear (`cpge`) responses are quoted
+in the natural units stated in their docstrings; their absolute
+normalizations have **not** been validated against exact diagonalization.
+
+```@docs; canonical=false
+kubo_bastin_cond
+```
+
+## Typed front end
+
+The recommended interface packages the rescaling and the moment metadata into
+small value types, so `(a, b, NH, NR)` never have to be threaded by hand:
+
+```julia
+using KPM, Random
+
+h = KPM.rescale(H; center=true)          # RescaledHamiltonian: fields H, a, b
+m = KPM.dos_moments(h; NC=1024, NR=12)   # DosMoments: records a, b, NH, NR
+E, rho = KPM.dos(m)                      # rescaling applied automatically
+rho0 = KPM.dos0(m)                       # DOS at E = h.b
+
+m2  = KPM.cond_moments(h, Jx, Jy; NC=256, NR=8)
+σxy = KPM.kubo_bastin_cond(m2, Ef; area=A)   # e²/h; NH, a, b come from m2
+dσE = KPM.d_dc_cond(m2, E_values)
+```
+
+Notes:
+
+- The current operators `Jx, Jy` must be built from the **original,
+  unrescaled** Hamiltonian with the bond convention
+  `(J_α)_ij = H_ij (r_i - r_j)_α` (building them from `h.H` divides
+  conductivities by `a²`).
+- Pass `rng=Xoshiro(seed)` to `dos_moments` / `cond_moments` for reproducible
+  random-phase probe vectors; pass `psi_in` to supply your own.
+- The typed methods are thin wrappers over the raw-array functions documented
+  below — same code paths, same conventions — and the raw interface remains
+  fully supported.
+- Kwargs stored in the objects (`b`, `NH`) cannot be overridden in the typed
+  calls; passing them raises an `ArgumentError` instead of silently
+  disagreeing with the stored provenance.
+- `optical_cond1/2` and `cpge` do not have typed wrappers yet and take
+  energies in rescaled units — see their docstrings.
+
+```@docs; canonical=false
+rescale
+RescaledHamiltonian
+dos_moments
+cond_moments
+DosMoments
+ConductivityMoments
+```
+
 ## Quick examples
 
 ### 1) Density of States (DOS) — concise example
@@ -89,16 +182,15 @@ nE = 1000             # output energy grid points
 
 H = tb1dchain(N)
 # Rescale H -> (-1, 1)
-#Hsparse = sparse(H.*(1+0*1im)) # make the Hamiltonian sparse under complex number
-b, H_norm = KPM.normalizeH(H)
+a, H_norm = KPM.normalizeH(H)
 
 # Compute Chebyshev moments (DOS)
 mu = KPM.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
 
 # Reconstruct DOS on a grid and map energies back to physical scale
-E, rho1024 = KPM.dos(mu, b;kernel = KPM.JacksonKernel, N_tilde=nE)
-E, rho64 = KPM.dos(mu[1:64], b;kernel = KPM.JacksonKernel, N_tilde=nE)
-E, rho32 = KPM.dos(mu[1:32], b;kernel = KPM.JacksonKernel, N_tilde=nE)
+E, rho1024 = KPM.dos(mu, a; kernel = KPM.JacksonKernel, N_tilde=nE)
+E, rho64 = KPM.dos(mu[1:64], a; kernel = KPM.JacksonKernel, N_tilde=nE)
+E, rho32 = KPM.dos(mu[1:32], a; kernel = KPM.JacksonKernel, N_tilde=nE)
 
 # Analytical DOS 
 rho_exact = zeros(length(E))
@@ -263,6 +355,13 @@ LorentzKernels
 
 Below is a concise list of the main public APIs provided by the package.
 
+- Typed front end (recommended):
+  - `rescale` → `RescaledHamiltonian`
+  - `dos_moments` → `DosMoments`; `cond_moments` → `ConductivityMoments`
+  - reconstruction via the same names as the raw interface: `dos(m)`,
+    `dos0(m)`, `kubo_bastin_cond(m, Ef; area)`, `d_dc_cond(m, E)`,
+    `dc_cond0(m)`, `dc_cond_single(m, Ef)`
+
 - Moment / KPM core:
   - `kpm_1d`, `kpm_1d!`
   - `kpm_1d_current`, `kpm_1d_current!`
@@ -274,6 +373,7 @@ Below is a concise list of the main public APIs provided by the package.
   - `ldos_mu`
 
 - Conductivity (DC / optical):
+  - `kubo_bastin_cond` (absolute units, e²/h; ED-validated)
   - `d_dc_cond`, `dc_cond0`, `dc_cond_single`
   - `optical_cond1`, `d_optical_cond1`
   - `optical_cond2`, `d_optical_cond2`

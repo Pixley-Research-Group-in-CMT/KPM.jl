@@ -51,16 +51,15 @@ function mu2D_apply_kernel_and_h_no_mutate(mu, NC::Int64, kernel::Function; dims
     kernels = [kernel, kernel]
     mu2D_apply_kernel_and_h_no_mutate(mu, NC, kernels; dims=dims)
 end
-function mu2D_apply_kernel_and_h_no_mutate(mu, NC::Int64, kernels::Array{Function, 1}; dims::Array=[1, 2])
+function mu2D_apply_kernel_and_h_no_mutate(mu, NC::Int64, kernels::Array{<:Function, 1}; dims::Array=[1, 2])
     μtilde = maybe_to_device(complex(copy(mu)))
-    #println("size of mu: ", size(μtilde))
     if length(dims) == 0
         return μtilde
     end
 
-    kernel_vec1 = maybe_to_device(kernel[1].(0:NC-1, NC))
+    kernel_vec1 = maybe_to_device(kernels[1].(0:NC-1, NC))
     kernel_vec1 = kernel_vec1 .* hn.(0:NC-1)
-    kernel_vec2 = maybe_to_device(kernel[2].(0:NC-1, NC))
+    kernel_vec2 = maybe_to_device(kernels[2].(0:NC-1, NC))
     kernel_vec2 = kernel_vec2 .* hn.(0:NC-1)
 
     if 1 in dims

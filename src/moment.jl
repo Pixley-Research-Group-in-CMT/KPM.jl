@@ -324,7 +324,7 @@ function kpm_1d(
                 kpm_1d!(H, NC, NR, NH, mu_all, psi_in_l, psi_in_r; verbose=verbose)
             else
                 for NRi = 1:NR
-                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in_l, NRi:NRi, :), view(psi_in_r, NRi:NRi, :); verbose=verbose)
+                    kpm_1d!(H, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in_l, :, NRi:NRi), view(psi_in_r, :, NRi:NRi); verbose=verbose)
                 end
             end
         else
@@ -345,7 +345,7 @@ function kpm_1d(
             kpm_1d!(H, NC, NR, NH, mu_all, psi_in; verbose=verbose)
         else
             for NRi = 1:NR
-                kpm_1d!(H, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in, NRi:NRi, :); verbose=verbose)
+                kpm_1d!(H, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in, :, NRi:NRi); verbose=verbose)
             end
         end
     end
@@ -379,17 +379,22 @@ function kpm_1d!(
     @assert (psi_in_size == (NH, NR)) "Invalid `psi_in` with size $(psi_in_size). Expecting $(NH), $(NR)"
 
     α_all[:, :, 1] = maybe_to_device(psi_in)
-    
-    mul!((@view α_all[:, :, 2]), H, (@view α_all[:, :, 1]))
-    @. mu_all[:, 1] = 1.0
-    mu1 = on_host_zeros(dt_cplx, NR)
 
-    # TODO this can be optimized
+    mul!((@view α_all[:, :, 2]), H, (@view α_all[:, :, 1]))
+
+    # μ0 = ⟨ψ|ψ⟩ (1 for normalized input) and μ1 = ⟨ψ|H̃|ψ⟩; both feed the
+    # doubling identities below, so unnormalized psi_in stays consistent.
+    mu0 = on_host_zeros(dt_cplx, NR)
+    mu1 = on_host_zeros(dt_cplx, NR)
     for NRi in 1:NR
+        mu0[NRi] = dot((@view α_all[:, NRi, 1]), (@view α_all[:, NRi, 1]))
         mu1[NRi] = dot((@view α_all[:, NRi, 1]), (@view α_all[:, NRi, 2]))
     end
 
+    @. mu_all[:, 1] = mu0
     @. mu_all[:, 2] = mu1
+    neg_mu0 = -mu0
+    neg_mu1 = -mu1
 
     ip = 2
     ipp = 1
@@ -407,15 +412,17 @@ function kpm_1d!(
     for n=n_enum
         chebyshev_iter_single(H, α_views[ipp], α_views[ip])
 
+        # doubling trick: μ_{2n-2} = 2⟨α_{n-1}|α_{n-1}⟩ - μ0,
+        #                 μ_{2n-1} = 2⟨α_n|α_{n-1}⟩ - μ1
         broadcast_dot_1d_1d!(mu_all_views[2n-1],
                              α_view_views[ip],
                              α_view_views[ip];
-                             alpha=2.0, beta=-1.0)
+                             alpha=2.0, beta=neg_mu0)
 
         broadcast_dot_1d_1d!(mu_all_views[2n],
                              α_view_views[ip],
                              α_view_views[ipp];
-                             alpha=2.0, beta=-mu1)
+                             alpha=2.0, beta=neg_mu1)
 
         ip = 3-ip
         ipp = 3-ipp
@@ -467,7 +474,7 @@ function kpm_1d_current(
                 kpm_1d_current!(H,Jα, NC, NR, NH, mu_all, psi_in_l, psi_in_r; verbose=verbose)
             else
                 for NRi = 1:NR
-                    kpm_1d_current!(H,Jα, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in_l, NRi:NRi, :), view(psi_in_r, NRi:NRi, :); verbose=verbose)
+                    kpm_1d_current!(H,Jα, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in_l, :, NRi:NRi), view(psi_in_r, :, NRi:NRi); verbose=verbose)
                 end
             end
         else
@@ -488,7 +495,7 @@ function kpm_1d_current(
             kpm_1d_current!(H,Jα, NC, NR, NH, mu_all, psi_in; verbose=verbose)
         else
             for NRi = 1:NR
-                kpm_1d_current!(H,Jα, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in, NRi:NRi, :); verbose=verbose)
+                kpm_1d_current!(H,Jα, NC, 1, NH, view(mu_all, NRi:NRi, :), view(psi_in, :, NRi:NRi); verbose=verbose)
             end
         end
     end
@@ -514,8 +521,8 @@ function kpm_1d_current!(
                  Jα_psi = maybe_on_device_zeros(dt_cplx, NH, NR),
                 )
     @assert size(mu_all) == (NR, NC)
-    H = maybe_to_device(H)
-    Jα = maybe_to_device(Jα)
+    H = maybe_to_device(H, dt_cplx)
+    Jα = maybe_to_device(Jα, dt_cplx)
 
     psi_in_size = size(psi_in)
     @assert (psi_in_size == (NH, NR)) "Invalid `psi_in` with size $(psi_in_size). Expecting $(NH), $(NR)"
@@ -661,9 +668,9 @@ function kpm_2d!(
     #    println("Jα and Jβ are identical. using m <-> n symmetry.")
     #end
 
-    H = maybe_to_device(H)
-    Jα = maybe_to_device(Jα)
-    Jβ = maybe_to_device(Jβ)
+    H = maybe_to_device(H, dt_cplx)
+    Jα = maybe_to_device(Jα, dt_cplx)
+    Jβ = maybe_to_device(Jβ, dt_cplx)
 
     # generate all views
     ψall_l_views = map(x -> view(ψall_l, :, :, x), 1:arr_size)
@@ -808,10 +815,10 @@ function kpm_3d!(
     ψ0r .= maybe_to_device(psi_in_r)
     ψ0l .= maybe_to_device(psi_in_l)
 
-    H = maybe_to_device(H)
-    Jα = maybe_to_device(Jα)
-    Jβ = maybe_to_device(Jβ)
-    Jγ = maybe_to_device(Jγ)
+    H = maybe_to_device(H, dt_cplx)
+    Jα = maybe_to_device(Jα, dt_cplx)
+    Jβ = maybe_to_device(Jβ, dt_cplx)
+    Jγ = maybe_to_device(Jγ, dt_cplx)
 
     # generate all views
     ψall_r_views = map(x -> view(ψall_r, :, :, x), 1:3)

@@ -1,13 +1,17 @@
-#using CUDA
 using Statistics, LinearAlgebra
 
 """
-Normalize a collection of vectors in an (NH, NR) array `psi_in`,
-where each column (that is `psi_in[:, NRi]`) represent a separate
-vector.
+Normalize (in place) a collection of vectors in an (NH, NR) array `psi_in`,
+where each column `psi_in[:, NRi]` is a separate vector.
+
+`centering=true` subtracts each column's mean first. Note this makes every
+vector exactly orthogonal to the uniform state, which biases the stochastic
+trace estimator by a rank-one projection (the uniform component of the
+spectrum is silently removed) — an O(1/D) effect in general, but exact and
+arbitrarily large for operators with weight on the uniform state. The
+default is therefore `centering=false`, which keeps E[ψψ†] ∝ I.
 """
-function normalize_by_col(psi_in, NR; centering=true)
-    # TODO: possible GPU optimization
+function normalize_by_col(psi_in, NR; centering=false)
     for NRi in 1:NR
         psi_in_NRi = @view psi_in[:, NRi]
         psi_in_NRi .-= (mean(psi_in_NRi) * centering)
@@ -58,7 +62,7 @@ Each view has NR replica of NH. This function take the average.
 target: 1D Array (n), n >= NCcols.
 Vls: 1D Array of 2D views, shape (n), each view (NH, NR), where n >= NCcols.
 Vr: 2D Array, shape NH, NR
-NCcols: Integer, number of columns. 
+NCcols: Integer, number of columns.
 """
 function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
                                          Vls::Array{T, 1} where {T<:SubArray{Ts, 2} where Ts},
@@ -72,80 +76,13 @@ function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
     return nothing
 end
 
-# function broadcast_dot_reduce_avg_2d_1d!(target::Union{Array, SubArray},
-#                                          Vls::Array{T, 1} where {T<:CuArray{Ts, 2} where Ts},
-#                                          Vr::CuArray{T, 2} where T,
-#                                          NR::Int64, NCcols::Int64;
-#                                          NC0::Int64=1, NCstep::Int64=1
-#                                         )
-#     target[NC0:NCstep:NCcols] .= dot.(Vls[NC0:NCstep:NCcols], [Vr])
-#     target ./= NR
-#     return nothing
-# end
 
-
+const ArrTypes = Union{Array, SubArray}
 
 """
-Vl and Vr are both [NH, NR] sized array. Each corresponding [:, NR] slice
-pair is dotted, saving into the target of [NR], multiplying by alpha and
-plus beta. Beta is either a number or vector of [NR]
-
+Column-pairwise dots: `target[i] = alpha * dot(Vl_arr[i], Vr_arr[i]) + beta[i]`,
+with `beta` a number or a vector. `Vl_arr`/`Vr_arr` are arrays of column views.
 """
-function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
-                              Vl::Union{Array, SubArray},
-                              Vr::Union{Array, SubArray},
-                              NR::Int64,
-                              alpha::Number=1.0,
-                              beta::Number=0.0)
-    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 0")
-    Threads.@threads for NRi in 1:NR
-        target[NRi] = dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta
-    end
-    return nothing
-end
-
-# function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
-#                               Vl::CuArray,
-#                               Vr::CuArray,
-#                               NR::Int64,
-#                               alpha::Number=1.0,
-#                               beta::Number=0.0)
-#     println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 1")
-#     for NRi in 1:NR
-#         target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta)
-#     end
-#     return nothing
-# end
-
-function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
-                              Vl::Union{Array, SubArray},
-                              Vr::Union{Array, SubArray},
-                              NR::Int64,
-                              alpha::Number,
-                              beta::Union{Array, SubArray})
-    println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 2")
-    Threads.@threads for NRi in 1:NR
-        target[NRi] = dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha + beta[NRi]
-    end
-    return nothing
-end
-
-
-# function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
-#                               Vl::CuArray,
-#                               Vr::CuArray,
-#                               NR::Int64,
-#                               alpha::Number,
-#                               beta::CuArray)
-#     println("deprecated: `broadcast_dot_1d_1d!` with `NR` - 3")
-#     for NRi in 1:NR
-#         target[NRi] = (dot(view(Vl, :, NRi), view(Vr, :, NRi)) * alpha) + beta[NRi]
-#     end
-#     return nothing
-# end
-
-# ArrTypes = Union{Array, SubArray, CuArray}
-ArrTypes = Union{Array, SubArray}
 function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
                               Vl_arr::Array{T} where {T <: ArrTypes},
                               Vr_arr::Array{T} where {T <: ArrTypes};
@@ -157,12 +94,12 @@ function broadcast_dot_1d_1d!(target::Union{Array, SubArray},
     return nothing
 end
 
-# Pointing
+# Ring-buffer index helpers: 3-slot ring ...
 r_i(n) = mod(n - 1, 3) + 1
 r_ip(n) = mod(n - 2, 3) + 1
 r_ipp(n) = mod(n - 3, 3) + 1
 
-# Pointing - 2 
+# ... and 2-slot ring, where slot ipp is always overwritten by slot i.
 r2_i(n) = mod(n - 1, 2) + 1
 r2_ip(n) = mod(n - 2, 2) + 1
-r2_ipp(n) = mod(n - 1, 2) + 1 # using this set of pointing, ipp will always be overwritten by i
+r2_ipp(n) = mod(n - 1, 2) + 1

@@ -1,6 +1,6 @@
 using Logging
 using LinearAlgebra
-#using CUDA
+using SparseArrays
 ## Special algorithm for longitudinal DC conductivity
 
 
@@ -17,11 +17,10 @@ function dc_long(
                  ψ0=maybe_on_device_zeros(dt_cplx, NH, NR * 2),
                  ψall_r=maybe_on_device_zeros(dt_cplx, NH, NR * 2, 2),
                  avg_NR=true,
-                 debug_mode=true
+                 debug_mode=false
                 )
     Ef = KPM.dt_real(Ef)
     H_rescale_factor = KPM.dt_real(H_rescale_factor)
-    #TODO assert NC_all is sorted
     NC_orig = NC_all
     NC_sort_i = sortperm(NC_orig, rev=true)
     NC_all = NC_orig[NC_sort_i]
@@ -55,18 +54,20 @@ function dc_long(
 
     # Hermitian warning
     if debug_mode
-        @time begin
-            if !ishermitian(H)
-                @warn "Hamiltonian is not Hermitian. Please make sure it is upper triangular."
-            end
-            if !ishermitian(Jα)
-                @warn "Current operator is not Hermitian. Please make sure it is upper triangular."
-            end
+        if !ishermitian(H)
+            @warn "Hamiltonian is not Hermitian. Please make sure it is upper triangular."
+        end
+        if !ishermitian(Jα)
+            @warn "Current operator is not Hermitian. Please make sure it is upper triangular."
         end
     end
 
-    H = Hermitian(maybe_to_device(H), :U)
-    Jα = Hermitian(maybe_to_device(Jα), :U)
+    # materialize the Hermitian operators on the host (keeps the documented
+    # upper-triangular-input semantics), then move plain matrices to the
+    # device: mul! through a Hermitian-wrapped CuSparseMatrixCSR multiplies
+    # by the stored triangle only and silently diverges (A100-verified)
+    H = maybe_to_device(sparse(Hermitian(H, :U)), dt_cplx)
+    Jα = maybe_to_device(sparse(Hermitian(Jα, :U)), dt_cplx)
 
 
     # generate all views
@@ -76,76 +77,57 @@ function dc_long(
     # right start
     view(ψ0, :, 1:NR) .= psi_in
     @debug "$(size(psi_in)), $(size(Jα)), $(size(ψ0))"
-    @sync mul!(view(ψ0, :, (NR+1):(2*NR)), Jα, psi_in)
+    mul!(view(ψ0, :, (NR+1):(2*NR)), Jα, psi_in)
 
     # loop over r
     n = 1 # THIS IS g0, T0, etc.
-    @sync ψall_r_views[r2_i(n)] .= ψ0
-    #NC_idx = findall(i -> i >= n, NC_all)
+    ψall_r_views[r2_i(n)] .= ψ0
     NC_idx_max = findlast(i -> i >= n, NC_all)
     broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
 
     n = 2
-    @sync mul!(ψall_r_views[r2_i(n)], H, ψall_r_views[r2_ip(n)])
-    #NC_idx = findall(i -> i >= n, NC_all)
+    mul!(ψall_r_views[r2_i(n)], H, ψall_r_views[r2_ip(n)])
     NC_idx_max = findlast(i -> i >= n, NC_all)
-    @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
+    broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
 
     n_enum = 3:NC_max
     if verbose >= 1
         println("loop over n=3:$(NC_max)")
         n_enum = ProgressBar(n_enum)
     end
-    @sync begin
-        for n in n_enum # TODO : save memory possible here. We do not need 3 vectors for psi 2
-            @sync chebyshev_iter_single(H,
-                                        ψall_r_views[r2_i(n)],
-                                        ψall_r_views[r2_ip(n)])
-            # output is stored at r2_i(n) === r2_ipp(n)
+    for n in n_enum
+        chebyshev_iter_single(H,
+                              ψall_r_views[r2_i(n)],
+                              ψall_r_views[r2_ip(n)])
+        # output is stored at r2_i(n) === r2_ipp(n)
 
-            #NC_idx = findall(i -> i >= n, NC_all)
-            NC_idx_max = findlast(i -> i >= n, NC_all)
-            @sync broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
-        end
+        NC_idx_max = findlast(i -> i >= n, NC_all)
+        broadcast_assign!(ψr, ψr_views, ψall_r_views[r2_i(n)], kernel_Tn[:, n], NC_idx_max)
     end
 
-@time begin    
     ψr_views_1 = map(x -> view(ψr, :, 1:NR, x), 1:length(NC_all))
     ψr_views_2 = map(x -> view(ψr, :, (NR+1):(2*NR), x), 1:length(NC_all))
 
     if avg_NR
         cond = on_host_zeros(dt_cplx, length(NC_all))
-        #Threads.@threads for NCi in 1:length(NC_all)
-        for (NCi, NC_orig_i) in enumerate(NC_sort_i) #1:length(NC_all)
-            @sync cond[NC_orig_i] = dot(ψr_views_1[NCi], Jα, ψr_views_2[NCi])
+        for (NCi, NC_orig_i) in enumerate(NC_sort_i)
+            # mul-then-dot (the generic 3-arg dot scalar-indexes on the GPU)
+            cond[NC_orig_i] = dot(ψr_views_1[NCi], Jα * ψr_views_2[NCi])
         end
         cond ./= NR
     else
         cond = on_host_zeros(dt_cplx, length(NC_all), NR)
-        #Threads.@threads for NCi in 1:length(NC_all)
         for (NCi, NC_orig_i) in enumerate(NC_sort_i)
             for NRi in 1:NR
-                @sync cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα * view(ψr_views_2[NCi], :, NRi))
+                cond[NC_orig_i, NRi] = dot(view(ψr_views_1[NCi], :, NRi), Jα * view(ψr_views_2[NCi], :, NRi))
             end
         end
     end
-end
 
     return cond / H_rescale_factor
 end
 
 
-# function broadcast_assign!(y_all::CuArray, y_all_views, x::CuArray, c_all::CuArray, idx_max::Int)
-#     # only working on 1:idx_max of NC_all
-#     block_count_x = cld(cld(length(x), 32), 512)
-#     block_count_y = idx_max
-#     @debug "block_count=$(block_count_x),$(block_count_y); c_all=$(c_all); idx=1:$(idx_max)"
-#     #CUDA.NVTX.@range "mainrange" begin
-#     #    CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
-#     #end
-#     CUDA.@sync @cuda threads=512 blocks=(block_count_x, block_count_y) cu_broadcast_assign!(y_all, x, c_all)
-#     return nothing
-# end
 function broadcast_assign!(y_all::Array, y_all_views::Array{T, 1} where {T<:Union{Array, SubArray}}, x::Union{Array, SubArray}, c_all::Array, idx_max::Int)
     if idx_max > Threads.nthreads()
         mt_broadcast_assign!(y_all_views, x, c_all, 1:idx_max)
@@ -154,19 +136,6 @@ function broadcast_assign!(y_all::Array, y_all_views::Array{T, 1} where {T<:Unio
     end
 end
 
-
-# function cu_broadcast_assign!(y_all, x, c_all)
-#     # copying x to y_all (3D list, first two), multiplying by kernel_vecs_Tn
-#     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x # thread id
-#     stride = blockDim().x * gridDim().x # number of threads per block * number of blocks
-#     c_idx = blockIdx().y
-
-#     x_l = length(x)
-#     for i = index:stride:x_l
-#         @inbounds y_all[i + (c_idx - 1) * x_l] += x[i] * c_all[c_idx]
-#     end
-#     return nothing
-# end
 
 function mt_broadcast_assign!(y_all, x, c_all, idx)
     # copying x to y_all (list of list), multiplying by kernel_vecs_Tn

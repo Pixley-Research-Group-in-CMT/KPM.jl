@@ -2,6 +2,11 @@ using QuadGK # numerical integral
 using FastGaussQuadrature # numerical integral - non adaptive
 using Logging
 
+"""
+Second-order (CPGE) response, Eq. 45, in units of e³/(Ω ħ³) with Ω = ω₁+ω₂
+the small frequency mismatch. Note: unlike `kubo_bastin_cond`, this
+normalization has not been validated against exact diagonalization.
+"""
 function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, Ω=ω/20)
     # Equation 45, last term
     # Gamma is calculated using Hamiltonian that is
@@ -15,7 +20,7 @@ function cpge(Gamma, NC, ω; beta=Inf, E_f=0.0, kernel=JacksonKernel, δ=1e-5, �
     Gamma_tilde = mu3D_apply_kernel_and_h(Gamma, NC, kernel)
 
     # applying specified quad
-    nodes, weights = gausschebyshevt(NC * 8) #gausschebyshev(NC * 8)  #update function
+    nodes, weights = gausschebyshevt(NC * 8)
     quad(f) = (
                dot(weights, f.(nodes)),
                nothing # THIS SHOULD BE AN ESTIMATION OF ERROR

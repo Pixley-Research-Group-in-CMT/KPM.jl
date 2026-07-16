@@ -33,7 +33,7 @@ catch e
     println("test implementation of Λnmp ...")
     @test KPM.Λnmp([1,1,1], 0.1) != nothing
     println("test implementation of gn_A ...")
-    @test KPM.gn_A(0.1; n=1) != nothing
+    @test KPM.gn_A(0.1, 1) != nothing
     println("test implementation of Δn ...")
-    @test KPM.Δn(0.1; n=1) != nothing
+    @test KPM.Δn(0.1, 1) != nothing
 end

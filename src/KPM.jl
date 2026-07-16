@@ -1,15 +1,8 @@
 module KPM
 
-dt_real = Float64
-dt_cplx = ComplexF64
-dt_num = Union{Float64, ComplexF64}
-
-try
-	import CUDA
-        include(joinpath(@__DIR__, "..", "ext", "KPMCUDAExt.jl"))
-catch
-	# CUDA not available — leave CUDA extension unloaded
-end
+const dt_real = Float64
+const dt_cplx = ComplexF64
+const dt_num = Union{Float64, ComplexF64}
 
 include("device.jl")
 
@@ -24,5 +17,6 @@ include("applications/ldos_mu.jl")
 include("applications/conductivity.jl")
 include("applications/cpge.jl")
 include("applications/optical_cond.jl")
+include("frontend.jl")
 
 end # module

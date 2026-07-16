@@ -1,13 +1,11 @@
 name = "KPM"
 uuid = "479eba37-df18-4d3d-9d60-66182c7f1954"
 authors = ["Yixing Fu, Angkun Wu"]
-version = "0.1.1"
+version = "0.2.0"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
-
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -20,11 +18,11 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
-[extensions]
-KPMCUDAExt = "CUDA"
-
 [weakdeps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+
+[extensions]
+KPMCUDAExt = "CUDA"
 
 [compat]
 Arpack = "0.5"
@@ -36,11 +34,12 @@ Polynomials = "4"
 ProgressBars = "1"
 QuadGK = "2"
 Zygote = "0.7"
-julia = ">= 1.10"
+julia = "1.10"
 
 [extras]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "JLD2"]
+test = ["Test", "JLD2", "CUDA"]

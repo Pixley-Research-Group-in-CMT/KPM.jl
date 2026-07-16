@@ -1,94 +1,61 @@
 using Random
 using SparseArrays
 using LinearAlgebra
-# using CUDA
-# using CUDA.CUSPARSE
-using Logging
-
-# function whichcore()
-#     if CUDA.has_cuda()
-#         println("GPU support for KPM.jl is experimental..")
-#         return true
-#     end
-#     return false
-# end
-# whichcore()
 
 """
-Report whether GPU support is active.
+    AbstractDevice
 
-Base package defaults to CPU-only behavior; CUDA-specific activation is provided
-by the optional package extension in `ext/KPMCUDAExt.jl`.
+Execution device for KPM workspaces. The base package provides `CPUDevice`;
+the CUDA package extension (`ext/KPMCUDAExt.jl`) adds a GPU device and
+activates it automatically when a functional GPU is present.
 """
-whichcore() = false
+abstract type AbstractDevice end
 
+struct CPUDevice <: AbstractDevice end
 
-#function maybe_to_device(x::Union{SparseMatrixCSC, CuSparseMatrixCSC}, expect_eltype=dt_num)
-function maybe_to_device(x::SparseMatrixCSC, expect_eltype=dt_num)
-    if !(eltype(x) <: expect_eltype)
-        @warn "element type $(eltype(x)) is not in expect_eltype=$(expect_eltype). Not casting, though."
-    end
+# Set once by the CUDA extension's `__init__`; never mutated elsewhere.
+const ACTIVE_DEVICE = Ref{AbstractDevice}(CPUDevice())
 
-    # if CUDA.has_cuda()
-    #     if (typeof(x) <: CuSparseMatrixCSC)
-    #         return x
-    #     else
-    #         return CuSparseMatrixCSC{eltype(x)}(x)
-    #     end
-    # else
-    #     return x
-    # end
-    return x
-end
+"""
+    whichcore()
 
-# function maybe_to_device(x::Union{Array, CuArray}, expect_eltype=dt_num)
-function maybe_to_device(x::Array, expect_eltype=dt_num)
-    if !(eltype(x) <: expect_eltype)
-        @warn "element type $(eltype(x)) is not in expect_eltype=$(expect_eltype). Not casting, though."
-    end
+Return `true` when GPU support is active (CUDA loaded and a functional GPU
+present), `false` for CPU-only operation.
+"""
+whichcore() = !(ACTIVE_DEVICE[] isa CPUDevice)
 
-    # if CUDA.has_cuda()# && eltype(x).isbitstype
-    #     if (typeof(x) <: CuArray)
-    #         return x
-    #     else
-    #         return CuArray{eltype(x)}(x)
-    #     end
-    # else
-    #     return x
-    # end
-    return x
-end
+"""
+    maybe_to_device(x[, expect_eltype])
 
+Move `x` to the active device; no-op on CPU. On GPU, sparse matrices are
+converted to CSR storage with element type `expect_eltype`, so that `mul!`
+against the complex Chebyshev block vectors is supported by CUSPARSE.
+SubArrays are never moved.
+"""
+maybe_to_device(x, expect_eltype=eltype(x)) = to_device(ACTIVE_DEVICE[], x, expect_eltype)
+maybe_to_device(x::SubArray, expect_eltype=eltype(x)) = x
 
-maybe_to_device(x::SubArray, expect_eltype=dt_num) = x # Pushing SubArray to GPU is bad for current CUDA stack.
+# Generic fallback: anything without a device-specific method stays put.
+to_device(::AbstractDevice, x, expect_eltype) = x
 
-maybe_to_host(x::Array) = x
-maybe_to_host(x::SparseMatrixCSC) = x
-# maybe_to_host(x::CuArray) = Array(x)
-# maybe_to_host(x::CuSparseMatrixCSC) = SparseMatrixCSC(x)
-maybe_to_host(x::SubArray) = x
-maybe_to_host(x::Number) = x
+"""
+    maybe_to_host(x)
 
-# function maybe_on_device_rand(args...)
-#     if CUDA.has_cuda()
-#         return CUDA.rand(args...)
-#     else
-#         return rand(args...)
-#     end
-# end
+Copy `x` back to host memory; no-op for host arrays and numbers.
+"""
+maybe_to_host(x::Union{Array, SparseMatrixCSC, SubArray, Number}) = x
 
+"""
+    maybe_on_device_zeros(args...)
+    maybe_on_device_rand(args...)
 
-# function maybe_on_device_zeros(args...)
-#     if CUDA.has_cuda()
-#         return CUDA.zeros(args...)
-#     else
-#         return zeros(args...)
-#     end
-# end
-maybe_on_device_rand(args...) = rand(args...)
-maybe_on_device_zeros(args...) = zeros(args...)
+Allocate like `zeros`/`rand`, on the active device.
+"""
+maybe_on_device_zeros(args...) = device_zeros(ACTIVE_DEVICE[], args...)
+maybe_on_device_rand(args...) = device_rand(ACTIVE_DEVICE[], args...)
 
+device_zeros(::CPUDevice, args...) = zeros(args...)
+device_rand(::CPUDevice, args...) = rand(args...)
 
 on_host_rand(args...) = rand(args...)
 on_host_zeros(args...) = zeros(args...)
-

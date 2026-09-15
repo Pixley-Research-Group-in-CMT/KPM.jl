@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/angkunwu/KPMsub.jl/workflows/CI/badge.svg)](https://github.com/angkunwu/KPMsub.jl/actions)
 [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://angkunwu.github.io/KPMsub.jl/dev/)
 [![Julia](https://img.shields.io/badge/julia-1.12-blue.svg)](https://julialang.org)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22773562.svg)](https://doi.org/10.5281/zenodo.22773562)
 
 
 ## Capability

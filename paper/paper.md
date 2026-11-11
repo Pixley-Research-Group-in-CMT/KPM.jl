@@ -51,14 +51,18 @@ The Kernel Polynomial Method (KPM) is a numerical technique for approximating sp
 It fills the gap between low-level C/Fortran libraries and interactive, reproducible Julia workflows by offering:
 
 1.  **Scalability:** Capable of handling large sparse matrices representing realistic tight-binding models.
-2.  **Versatility:** Support for DOS and LDOS, as well the DC conductivity (both longitudinal and Hall) as well as linear and nonlinear optical response functions.
+2.  **Versatility:** Support for DOS and LDOS, DC conductivity (both longitudinal and Hall), and linear and nonlinear optical response functions.
 3.  **Performance:** Automatic GPU acceleration via `CUDA.jl` when available.
 4.  **Integration:** As a Julia package, it easily interfaces with other tools in the Julia ecosystem for Hamiltonian generation and data analysis.
 
 In condensed matter physics, understanding the effects of disorder, interactions, and complex lattice geometries often requires numerical simulations of very large Hamiltonians. Traditional ED methods for computing the full spectrum are limited to relatively small system sizes (typically $N \sim 10^4$ states), which can be insufficient to resolve the spectral features of disordered systems or incommensurate structures like twisted bilayer graphene.
 `KPM.jl` is especially useful for studies of disorder, moiré systems, and topological materials where large system sizes ($N \sim 10^7$ states) are essential to capture realistic spectral and transport behavior.
 
+# State of the field
 
+The Kernel Polynomial Method is well established for computing spectral and response functions of large sparse Hamiltonians [@RevModPhys.78.275], and several open-source packages implement it. Kwant provides a general tight-binding transport framework with KPM routines for spectral densities and Kubo conductivity [@groth2014kwant]; pybinding couples Python model construction to C++ KPM routines for densities of states, Green's functions, and conductivity [@moldovan2017pybinding]; and KITE targets large-scale real-space calculations of spectral densities, DC and optical conductivities, and nonlinear optical response [@joao2020kite]. In Julia, Quantica.jl provides a KPM solver within a broader tight-binding framework [@sanjose2024quantica].
+
+`KPM.jl` instead acts directly on user-supplied sparse Hamiltonians and current operators, separates Chebyshev-moment generation from observable reconstruction so moments can be reused, and runs on GPUs via `CUDA.jl`. We developed a standalone Julia package rather than extending the Python/C++ codes so that model construction, moment generation, and analysis can be modified and combined in a single language, without cross-language interfaces.
 
 # Software design
 
@@ -121,9 +125,9 @@ plot(E, rho, xlabel="E", ylabel="DOS", label="KPM")
 plot!(E, rho_exact, lw=1, ls=:dash, label="Analytic")
 ```
 
-The final DOS is shown in Figure \ref{fig:example}. Discrepancies between the KPM and analytic results arise from the finite system size, the truncated KPM expansion order, and stochastic trace estimation error.
+Figure \ref{fig:example} shows the DOS from the same workflow for a larger chain and several expansion orders. Discrepancies between the KPM and analytic results arise from the finite system size, the truncated KPM expansion order, and stochastic trace estimation error.
 
-![Density of states for a simple 1D tight-binding chain $L=10^4$: KPM (solid) with variouns expansion order $N_C=16,32,1024$ vs. analytic (dashed). The number of random vectors for the stochastic trace is $N_R=10$. \label{fig:example}](dosplot.pdf){width=80%}
+![Density of states for a simple 1D tight-binding chain $L=10^4$: KPM (solid) with various expansion orders $N_C=32,64,1024$ vs. analytic (dashed). The number of random vectors for the stochastic trace is $N_R=10$. \label{fig:example}](dosplot.pdf){width=80%}
 
 # Research impact statement
 
@@ -133,7 +137,7 @@ The final DOS is shown in Figure \ref{fig:example}. Discrepancies between the KP
 
 2.  **Experimentally relevant transport calculations:** Applied to transport modeling based on tight-binding models derived from DFT+U to directly compare theory with experiment [@Liu2021; @wu2025electronic; @wu2020berry].
 
-3.  **Effects of Quasiperodic potentials:** Used to compute conductivity and disorder-averaged spectral properties and Green's function in disordered materials [@Yi2022; @fu2021flat].
+3.  **Effects of Quasiperiodic potentials:** Used to compute conductivity and disorder-averaged spectral properties and Green's function in disordered materials [@Yi2022; @fu2021flat].
 
 4.  **Nonlinear optical responses and disordered topological material:** Employed to calculate nonlinear responses such as the CPGE in disordered topological semimetals and to identify spectral signatures of surface and bulk phase transitions in disordered axion insulators [@Wu2024; @Grindall2025].
 

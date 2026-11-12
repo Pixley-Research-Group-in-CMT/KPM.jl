@@ -2,41 +2,52 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Setup Julia
         uses: julia-actions/setup-julia@v1
         with:
           version: '1.10'
+
       - name: Install dependencies and run tests
-        run: JULIA_PKG_SERVER= julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.test()'
+        run: |
+          JULIA_PKG_SERVER= julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.test()'
 
   docs:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+
+    # Only deploy documentation after a push to main.
+    # Pull requests should run tests, but should not deploy the website.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Setup Julia
         uses: julia-actions/setup-julia@v1
         with:
           version: '1.10'
-      - name: Build docs
-        run: julia --project=docs -e 'using Pkg; Pkg.instantiate(); include("docs/make.jl")'
 
-      - name: Deploy to GitHub Pages (via gh-pages branch)
+      - name: Build documentation
+        run: |
+          julia --project=docs -e 'using Pkg; Pkg.instantiate(); include("docs/make.jl")'
+
+      - name: Deploy documentation to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

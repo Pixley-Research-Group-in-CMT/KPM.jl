@@ -12,7 +12,7 @@ CurrentModule = KPMru
 This package is currently unregistered. Install the latest version directly from GitHub:
 
 ```bash
-] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
+] add https://github.com/Pixley-Research-Group-in-CMT/KPMru.jl
 ```
 
 Notes:

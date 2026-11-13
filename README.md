@@ -4,8 +4,8 @@ Previously named `KPM`, this package now loads with `using KPMru`.
 Update qualified calls from `KPM.function_name(...)` to `KPMru.function_name(...)`;
 the function names and arguments are unchanged.
 
-[![Build Status](https://github.com/Pixley-Research-Group-in-CMT/KPM.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixley-Research-Group-in-CMT/KPM.jl/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://pixley-research-group-in-cmt.github.io/KPM.jl/)
+[![Build Status](https://github.com/Pixley-Research-Group-in-CMT/KPMru.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixley-Research-Group-in-CMT/KPMru.jl/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://pixley-research-group-in-cmt.github.io/KPMru.jl/)
 [![Julia](https://img.shields.io/badge/julia-1.12-blue.svg)](https://julialang.org)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22773562.svg)](https://doi.org/10.5281/zenodo.22773562)
 
@@ -43,7 +43,7 @@ where `dchi_xyz` is the differential second-order conductivity (arXiv:2312.14244
   ```
   Then, add the KPMru package
   ```
-  ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
+  ] add https://github.com/Pixley-Research-Group-in-CMT/KPMru.jl
   ```
   If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPMru. Also recent Julia updates change GPUcompiler, which also affect the old version CUDA. To downgrade Julia, we recommend users to install `juliaup` (https://github.com/JuliaLang/juliaup), i.e.,
   ```
@@ -67,7 +67,7 @@ This is an [unregistered package](https://docs.julialang.org/en/v1.0/stdlib/Pkg/
 
 Install the package with the latest CUDA.jl:
   ```
-  ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
+  ] add https://github.com/Pixley-Research-Group-in-CMT/KPMru.jl
   ```
   The package now supports CUDA.jl versions 4 and 5, making it compatible with modern Julia packages.
 

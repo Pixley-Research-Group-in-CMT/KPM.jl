@@ -16,7 +16,7 @@ authors:
     given-names: J. H.
     orcid: "https://orcid.org/0000-0002-3109-640X"
 version: "0.1.1"
-repository-code: "https://github.com/Pixley-Research-Group-in-CMT/KPM.jl"
+repository-code: "https://github.com/Pixley-Research-Group-in-CMT/KPMru.jl"
 license: MPL-2.0
 abstract: >-
   KPMru.jl is a Julia implementation of the Kernel Polynomial Method for

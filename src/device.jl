@@ -7,7 +7,7 @@ using Logging
 
 # function whichcore()
 #     if CUDA.has_cuda()
-#         println("GPU support for KPM.jl is experimental..")
+#         println("GPU support for KPMru.jl is experimental..")
 #         return true
 #     end
 #     return false
@@ -18,7 +18,7 @@ using Logging
 Report whether GPU support is active.
 
 Base package defaults to CPU-only behavior; CUDA-specific activation is provided
-by the optional package extension in `ext/KPMCUDAExt.jl`.
+by the optional package extension in `ext/KPMruCUDAExt.jl`.
 """
 whichcore() = false
 

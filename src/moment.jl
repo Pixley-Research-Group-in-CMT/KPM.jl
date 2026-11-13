@@ -889,7 +889,7 @@ function kpm_3d(
    else
        @info "Using random phase as random vector"
        psi_in_l = exp.(2pi * 1im * rand(NH, NR));
-       KPM.normalize_by_col(psi_in_l, NR)
+       KPMru.normalize_by_col(psi_in_l, NR)
        psi_in_r = psi_in_l
    end
 

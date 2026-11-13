@@ -1,5 +1,5 @@
 ---
-title: 'KPM.jl: A Julia Package for Kernel Polynomial Method in Condensed Matter Physics'
+title: 'KPMru.jl: A Julia Package for Kernel Polynomial Method in Condensed Matter Physics'
 tags:
   - Julia
   - Kernel Polynomial Method
@@ -43,11 +43,11 @@ bibliography: paper.bib
 
 The Kernel Polynomial Method (KPM) is a numerical technique for approximating spectral densities and response functions of large Hermitian operators without performing full diagonalization [@RevModPhys.78.275]. KPM expands spectral functions in Chebyshev polynomials and evaluates them via recursive matrix-vector multiplications. Reconstructing the moments of the Chebyshev expansion depends on the observable of interest and can be computed through either a single inner product or through a trace, which is computed using a stochastic trace [@skilling1988axioms]. Carefully chosen kernels (e.g., the Jackson) suppress Gibbs oscillations and improve convergence of the truncated Chebyshev series. Because the dominant cost is sparse matrix–vector products, KPM scales (nearly) linearly with the size of the Hilbert space, which for non-interacting systems scales like the volume, and can be applied to extremely large sparse Hamiltonians to compute quantities such as the density of states (DOS) and DC conductivity [@joao2019].
 
-`KPM.jl` is a Julia implementation [@bezanson2017julia] of KPM for tight-binding models in condensed matter physics, providing a high-performance, user-friendly toolbox. `KPM.jl` targets large sparse Hamiltonians, integrates with `CUDA.jl` for automatic GPU acceleration when available, and is designed for scalability and ease of integration into Julia-based workflows for large-scale spectral and transport calculations.
+`KPMru.jl` is a Julia implementation [@bezanson2017julia] of KPM for tight-binding models in condensed matter physics, providing a high-performance, user-friendly toolbox. `KPMru.jl` targets large sparse Hamiltonians, integrates with `CUDA.jl` for automatic GPU acceleration when available, and is designed for scalability and ease of integration into Julia-based workflows for large-scale spectral and transport calculations.
 
 # Statement of need
 
-`KPM.jl` provides a high-performance implementation of the Kernel Polynomial Method tailored to tight-binding models. The method avoids ever doing a full diagonalization and instead uses Chebyshev expansions, the package enables spectral and transport calculations on very large sparse Hamiltonians that are infeasible with exact diagonalization (ED).
+`KPMru.jl` provides a high-performance implementation of the Kernel Polynomial Method tailored to tight-binding models. The method avoids ever doing a full diagonalization and instead uses Chebyshev expansions, the package enables spectral and transport calculations on very large sparse Hamiltonians that are infeasible with exact diagonalization (ED).
 It fills the gap between low-level C/Fortran libraries and interactive, reproducible Julia workflows by offering:
 
 1.  **Scalability:** Capable of handling large sparse matrices representing realistic tight-binding models.
@@ -56,32 +56,32 @@ It fills the gap between low-level C/Fortran libraries and interactive, reproduc
 4.  **Integration:** As a Julia package, it easily interfaces with other tools in the Julia ecosystem for Hamiltonian generation and data analysis.
 
 In condensed matter physics, understanding the effects of disorder, interactions, and complex lattice geometries often requires numerical simulations of very large Hamiltonians. Traditional ED methods for computing the full spectrum are limited to relatively small system sizes (typically $N \sim 10^4$ states), which can be insufficient to resolve the spectral features of disordered systems or incommensurate structures like twisted bilayer graphene.
-`KPM.jl` is especially useful for studies of disorder, moiré systems, and topological materials where large system sizes ($N \sim 10^7$ states) are essential to capture realistic spectral and transport behavior.
+`KPMru.jl` is especially useful for studies of disorder, moiré systems, and topological materials where large system sizes ($N \sim 10^7$ states) are essential to capture realistic spectral and transport behavior.
 
 # State of the field
 
 The Kernel Polynomial Method is well established for computing spectral and response functions of large sparse Hamiltonians [@RevModPhys.78.275], and several open-source packages implement it. Kwant provides a general tight-binding transport framework with KPM routines for spectral densities and Kubo conductivity [@groth2014kwant]; pybinding couples Python model construction to C++ KPM routines for densities of states, Green's functions, and conductivity [@moldovan2017pybinding]; and KITE targets large-scale real-space calculations of spectral densities, DC and optical conductivities, and nonlinear optical response [@joao2020kite]. In Julia, Quantica.jl provides a KPM solver within a broader tight-binding framework [@sanjose2024quantica].
 
-`KPM.jl` instead acts directly on user-supplied sparse Hamiltonians and current operators, separates Chebyshev-moment generation from observable reconstruction so moments can be reused, and runs on GPUs via `CUDA.jl`. We developed a standalone Julia package rather than extending the Python/C++ codes so that model construction, moment generation, and analysis can be modified and combined in a single language, without cross-language interfaces.
+`KPMru.jl` instead acts directly on user-supplied sparse Hamiltonians and current operators, separates Chebyshev-moment generation from observable reconstruction so moments can be reused, and runs on GPUs via `CUDA.jl`. We developed a standalone Julia package rather than extending the Python/C++ codes so that model construction, moment generation, and analysis can be modified and combined in a single language, without cross-language interfaces.
 
 # Software design
 
-`KPM.jl` is designed with modularity and performance in mind. The package operates on sparse Hamiltonians and computes Chebyshev moments using stochastic trace estimation with random vectors. The core functionality is divided into three main tiers corresponding to the complexity of the response function:
+`KPMru.jl` is designed with modularity and performance in mind. The package operates on sparse Hamiltonians and computes Chebyshev moments using stochastic trace estimation with random vectors. The core functionality is divided into three main tiers corresponding to the complexity of the response function:
 
-* **Density of States (1D):** The `KPM.kpm_1d` function computes the Chebyshev moments for the DOS. It supports stochastic estimation using multiple random vectors (`NR`) and allows users to supply custom input vectors to compute the LDOS. The moments are converted to the spectral density $\rho(E)$ using `KPM.dos`.
+* **Density of States (1D):** The `KPMru.kpm_1d` function computes the Chebyshev moments for the DOS. It supports stochastic estimation using multiple random vectors (`NR`) and allows users to supply custom input vectors to compute the LDOS. The moments are converted to the spectral density $\rho(E)$ using `KPMru.dos`.
 
-* **Linear Response (2D):** For transport properties like DC conductivity, `KPM.kpm_2d` calculates the moments required for the Kubo-Greenwood formula involving two current operators ($J_x, J_y$). The function `KPM.d_dc_cond` processes these moments to obtain the energy-dependent conductivity $\sigma_{\alpha\beta}(E)$ with $\alpha,\beta=x,y,z$.
+* **Linear Response (2D):** For transport properties like DC conductivity, `KPMru.kpm_2d` calculates the moments required for the Kubo-Greenwood formula involving two current operators ($J_x, J_y$). The function `KPMru.d_dc_cond` processes these moments to obtain the energy-dependent conductivity $\sigma_{\alpha\beta}(E)$ with $\alpha,\beta=x,y,z$.
 
-* **Nonlinear Response (3D):** The package includes specialized routines (`KPM.kpm_3d`) for frequency-dependent linear and nonlinear responses, such as the Circular Photogalvanic Effect (CPGE). This involves computing moments for three operators ($J_x, J_y, J_z$) and post-processing them (`KPM.d_cpge`) to extract the second-order conductivity $\chi_{xyz}(\omega_1, \omega_2)$.
+* **Nonlinear Response (3D):** The package includes specialized routines (`KPMru.kpm_3d`) for frequency-dependent linear and nonlinear responses, such as the Circular Photogalvanic Effect (CPGE). This involves computing moments for three operators ($J_x, J_y, J_z$) and post-processing them (`KPMru.d_cpge`) to extract the second-order conductivity $\chi_{xyz}(\omega_1, \omega_2)$.
 
-The software automatically detects available hardware and offloads matrix-vector multiplications to a GPU if a compatible CUDA device is present (`KPM.whichcore()`), ensuring efficient performance on modern clusters. Further memory can be saved by computing the matrix elements of $H$ and $\mathbf{J}$ on the fly, which is not implemented here. 
+The software automatically detects available hardware and offloads matrix-vector multiplications to a GPU if a compatible CUDA device is present (`KPMru.whichcore()`), ensuring efficient performance on modern clusters. Further memory can be saved by computing the matrix elements of $H$ and $\mathbf{J}$ on the fly, which is not implemented here.
 
 # Example Usage
 
-The following minimal example computes the DOS of a 1‑D tight‑binding chain using `KPM.jl`.
+The following minimal example computes the DOS of a 1‑D tight‑binding chain using `KPMru.jl`.
 
 ```julia
-using KPM
+using KPMru
 using LinearAlgebra
 using SparseArrays
 using Plots
@@ -106,14 +106,15 @@ nE = 1000             # output energy grid points
 
 H = tb1dchain(N)
 # Rescale H -> (-1, 1)
-Hsparse = sparse(H.*(1+0*1im)) # make the Hamiltonian sparse under complex number
-b, H_norm = KPM.normalizeH(Hsparse)
+# make the Hamiltonian sparse under complex number
+Hsparse = sparse(H.*(1+0*1im))
+b, H_norm = KPMru.normalizeH(Hsparse)
 
 # Compute Chebyshev moments (DOS)
-mu = KPM.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
+mu = KPMru.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
 
 # Reconstruct DOS on a grid and map energies back to physical scale
-E, rho = KPM.dos(mu, b;kernel = KPM.JacksonKernel, N_tilde=nE)
+E, rho = KPMru.dos(mu, b;kernel = KPMru.JacksonKernel, N_tilde=nE)
 
 # Analytical DOS 
 rho_exact = zeros(length(E))
@@ -131,7 +132,7 @@ Figure \ref{fig:example} shows the DOS from the same workflow for a larger chain
 
 # Research impact statement
 
-`KPM.jl` has been utilized in numerous studies to investigate electronic structure and response in complex materials:
+`KPMru.jl` has been utilized in numerous studies to investigate electronic structure and response in complex materials:
 
 1.  **Moiré systems and disorder:** Enabled large-scale simulations of twisted bilayer graphene and demonstrated how twist-angle disorder broadens flat bands and modifies spectral features [@Wilson2020; @fu2020magic; @Chang2024; @Yi2022; @Chou2020].
 

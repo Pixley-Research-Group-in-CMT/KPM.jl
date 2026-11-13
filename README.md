@@ -1,8 +1,11 @@
-# KPM
+# KPMru
 
-[![Build Status](https://github.com/angkunwu/KPMsub.jl/workflows/CI/badge.svg)](https://github.com/angkunwu/KPMsub.jl/actions)
+Previously named `KPM`, this package now loads with `using KPMru`.
+Update qualified calls from `KPM.function_name(...)` to `KPMru.function_name(...)`;
+the function names and arguments are unchanged.
+
 [![Build Status](https://github.com/Pixley-Research-Group-in-CMT/KPM.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/Pixley-Research-Group-in-CMT/KPM.jl/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://angkunwu.github.io/KPMsub.jl/dev/)
+[![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://pixley-research-group-in-cmt.github.io/KPM.jl/)
 [![Julia](https://img.shields.io/badge/julia-1.12-blue.svg)](https://julialang.org)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22773562.svg)](https://doi.org/10.5281/zenodo.22773562)
 
@@ -13,22 +16,22 @@ Kernel Polynomial Method (KPM) for various quantities:
 
 KPM for density of states (DOS) (RevModPhys.78.275):
 ```
-mu = KPM.kpm_1d(H_norm, NC, NR)
-E, rho = KPM.dos(mu, D)
+mu = KPMru.kpm_1d(H_norm, NC, NR)
+E, rho = KPMru.dos(mu, D)
 ```
-where `H_norm` is the scaled Hamiltonian with original half bandwidth `D`, `NC` is the expansion order and `NR` is the number of random vectors for stochastic estimation of trace in KPM. The function `KPM.dos` evaluate the DOS `rho` with energy points `E`.
+where `H_norm` is the scaled Hamiltonian with original half bandwidth `D`, `NC` is the expansion order and `NR` is the number of random vectors for stochastic estimation of trace in KPM. The function `KPMru.dos` evaluate the DOS `rho` with energy points `E`.
 
 KPM for DC conductivity (linear response)  (RevModPhys.78.275):
 ```
-μ2Dxy = KPM.kpm_2d(H_norm, Jx, Jy, NC, NR, NH)
-dσxyE = KPM.d_dc_cond(μ2Dxy, D, Evals)
+μ2Dxy = KPMru.kpm_2d(H_norm, Jx, Jy, NC, NR, NH)
+dσxyE = KPMru.d_dc_cond(μ2Dxy, D, Evals)
 ```
-where  `Jx, Jy` are current operators and `NH` is the dimensionality of the Hamiltonian `H_norm`. The function `KPM.d_dc_cond` evaluate the differential first-order conductivity `dσxyE` with given energy points `Evals`, integration of which (with Fermi distribution) gives DC conductivity at certain temperature.
+where  `Jx, Jy` are current operators and `NH` is the dimensionality of the Hamiltonian `H_norm`. The function `KPMru.d_dc_cond` evaluate the differential first-order conductivity `dσxyE` with given energy points `Evals`, integration of which (with Fermi distribution) gives DC conductivity at certain temperature.
 
 KPM for frequency-dependent nonlinear response (arXiv:1810.03732):
 ```
-mu_3d_xyz = KPM.kpm_3d(H_norm, Jx, Jy, Jz, NC, NR, NH)
-dchi_xyz = KPM.d_cpge(mu_3d_xyz, NC, w1, w2, E)
+mu_3d_xyz = KPMru.kpm_3d(H_norm, Jx, Jy, Jz, NC, NR, NH)
+dchi_xyz = KPMru.d_cpge(mu_3d_xyz, NC, w1, w2, E)
 ```
 where `dchi_xyz` is the differential second-order conductivity (arXiv:2312.14244), `w1, w2` are two frequencies and `E` is the energy to evaluate, integration of which (with Fermi distribution) gives non at certain temperature.
 
@@ -38,11 +41,11 @@ where `dchi_xyz` is the differential second-order conductivity (arXiv:2312.14244
   ```
   ] add CUDA@3.12.0
   ```
-  Then, add the KPM package
+  Then, add the KPMru package
   ```
   ] add https://github.com/Pixley-Research-Group-in-CMT/KPM.jl
   ```
-  If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPM. Also recent Julia updates change GPUcompiler, which also affect the old version CUDA. To downgrade Julia, we recommend users to install `juliaup` (https://github.com/JuliaLang/juliaup), i.e., 
+  If the code automatically upgrade CUDA, go to `~/.julia/packages/CUDA/` (or where you put your package) and delete the higher version of CUDA. Then, `] rm CUDA` to uninstall CUDA from registries and `] add CUDA@3.12.0`, which will also precompile KPMru. Also recent Julia updates change GPUcompiler, which also affect the old version CUDA. To downgrade Julia, we recommend users to install `juliaup` (https://github.com/JuliaLang/juliaup), i.e.,
   ```
   brew install juliaup
   ```
@@ -70,11 +73,11 @@ Install the package with the latest CUDA.jl:
 
   After installation, you should be able to import the package by
   ```
-      julia> using KPM
+      julia> using KPMru
   ```
   without further action with github. To update, use
   ```
-  ] update KPM
+  ] update KPMru
   ```
   and authenticate with GitHub only if prompted by your local setup. 
   
@@ -85,7 +88,7 @@ Install the package with the latest CUDA.jl:
 
   The most simple way to calculate DOS is
   ```
-  julia> E, rhoE = KPM.dos(H_orig)
+  julia> E, rhoE = KPMru.dos(H_orig)
   ```
 
   For many situation, you may need more control over the calculation. In such case, you may calculate moment first and then convert to DOS. 
@@ -96,9 +99,9 @@ done by default in `kpm_1d`, or you may supply your own input vectors.
 
   ```
   julia> NC = 1024; NR = 13;
-  julia> mu = KPM.KPM_1d(H_norm, NC, NR)
-  julia> rho_0 = KPM.dos0(mu, a)
-  julia> d2rho_0 = KPM.dos0(mu, a; dE_order=2)
+  julia> mu = KPMru.KPM_1d(H_norm, NC, NR)
+  julia> rho_0 = KPMru.dos0(mu, a)
+  julia> d2rho_0 = KPMru.dos0(mu, a; dE_order=2)
   julia> E_grid, rho_E = dos(mu, a, 50; E_range=[-1.5, 1.5])
   ```
 
@@ -114,16 +117,16 @@ done by default in `kpm_1d`, or you may supply your own input vectors.
 ## Notes about GPU:
 
 <!-- This package uses GPU *automatically* when GPU is available. No action needed. To check whether GPU is enabled, run -->
-CUDA support is now an optional package extension. CPU usage works without installing CUDA.jl. If CUDA.jl is present, KPM loads CUDA-specialized methods automatically.
+CUDA support is now an optional package extension. CPU usage works without installing CUDA.jl. If CUDA.jl is present, KPMru loads CUDA-specialized methods automatically.
 
 To check whether GPU is enabled, run
 ```
-  KPM.whichcore()
+  KPMru.whichcore()
 ```
-<!-- It is also recommended to add this line right after importing `KPM` in julia code to guarantee using GPU correctly. -->
-To use CUDA GPU, you need to load CUDA first, then load KPM
+<!-- It is also recommended to add this line right after importing `KPMru` in julia code to guarantee using GPU correctly. -->
+To use CUDA GPU, you need to load CUDA first, then load KPMru
 ```
   using CUDA
-  using KPM
+  using KPMru
 ```
 Then the module will load extension code.

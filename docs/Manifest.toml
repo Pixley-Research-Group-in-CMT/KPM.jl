@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "84a017dbe1e14533c4d71c7c9f16f8e50c03e1a8"
+project_hash = "df8d2a348d78c3f274b5f8afdf0a5d9410c95a7c"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -497,7 +497,7 @@ git-tree-sha1 = "af433a10f3942e882d3c671aacb203e006a5808f"
 uuid = "9c1d0b0a-7046-5b2e-a33f-ea22f176ac7e"
 version = "0.2.1+0"
 
-[[deps.KPM]]
+[[deps.KPMru]]
 deps = ["Arpack", "CUDA", "DocStringExtensions", "Documenter", "FastGaussQuadrature", "LinearAlgebra", "Logging", "LoopVectorization", "Polynomials", "ProgressBars", "QuadGK", "Random", "SparseArrays", "Statistics", "Zygote"]
 path = ".."
 uuid = "479eba37-df18-4d3d-9d60-66182c7f1954"

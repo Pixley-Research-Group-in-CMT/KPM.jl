@@ -1,4 +1,4 @@
-using KPM
+using KPMru
 using Test
 
 @testset "kernels/kernels.jl" begin
@@ -9,7 +9,7 @@ end
     include("chebyshev_iteration_test.jl")
 end
 
-@testset "KPM.jl" begin
+@testset "KPMru.jl" begin
     include("integration_test.jl")
 end
 

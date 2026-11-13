@@ -1,7 +1,7 @@
 using Test
 using LinearAlgebra
 using SparseArrays
-using KPM
+using KPMru
 
 # Small correctness test for `chebyshev_iter`.
 # Build a tiny Hermitian `H`, two starter vectors and run the
@@ -23,7 +23,7 @@ H = (Hrand + Hrand') / 2
 
 # run package implementation (in-place) using array-of-views API
 ψviews = map(i -> view(ψall, :, :, i), 1:Niter)
-KPM.chebyshev_iter(H, ψviews, Niter)
+KPMru.chebyshev_iter(H, ψviews, Niter)
 
 # manual recurrence: T_n = 2 H T_{n-1} - T_{n-2}
 expected = Vector{Array{ComplexF64,2}}(undef, Niter)

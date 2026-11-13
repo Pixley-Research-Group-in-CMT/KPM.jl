@@ -1,4 +1,4 @@
-using KPM:hn, JacksonKernel, LorentzKernels, muND_apply_kernel_and_h, mu2D_apply_kernel_and_h
+using KPMru:hn, JacksonKernel, LorentzKernels, muND_apply_kernel_and_h, mu2D_apply_kernel_and_h
 
 # test hn work as expected
 @test hn(0) == 1
@@ -10,13 +10,13 @@ mu_2d = ones(NC, NC)
 mu_3d = ones(NC, NC, NC)
 
 for kernel in [
-               KPM.JacksonKernel,
-               KPM.LorentzKernels(1.0),
-               KPM.LorentzKernels(2.0),
+               KPMru.JacksonKernel,
+               KPMru.LorentzKernels(1.0),
+               KPMru.LorentzKernels(2.0),
                # add here when any new kernel is implemented
               ]
 
-    mu_1d_tilde = KPM.muND_apply_kernel_and_h(mu_1d, NC, kernel; dims=[1])
+    mu_1d_tilde = KPMru.muND_apply_kernel_and_h(mu_1d, NC, kernel; dims=[1])
     @test all(imag(mu_1d_tilde) .≈ 0) # stays real
     mu_1d_tilde = real(mu_1d_tilde)
     @test mu_1d_tilde[1] == 1 < mu_1d_tilde[2] # first term should be 1, and second term (after applying hn) should be larger than first 
@@ -24,7 +24,7 @@ for kernel in [
     @test all(mu_1d_tilde[2:end-1].>mu_1d_tilde[3:end]) # kernel should be damping by NC.
 
 
-    mu_3d_tilde = KPM.muND_apply_kernel_and_h(mu_3d, NC, KPM.JacksonKernel; dims=[1,2,3])
+    mu_3d_tilde = KPMru.muND_apply_kernel_and_h(mu_3d, NC, KPMru.JacksonKernel; dims=[1,2,3])
     @test all(imag(mu_3d_tilde) .≈ 0) # stays real
     mu_3d_tilde = real(mu_3d_tilde)
     @test all(mu_3d_tilde[1,:,:] .== mu_3d_tilde[:,1,:] .== mu_3d_tilde[:,:,1]) # should be symmetric

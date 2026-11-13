@@ -10,7 +10,7 @@ function dc_long(
                  NC_all::Vector{Int64}, NR::Int64, NH::Int64;
                  verbose=0,
                  psi_in=nothing,
-                 kernel=KPM.JacksonKernel,
+                 kernel=KPMru.JacksonKernel,
                  Ef=0.0,
                  # workspace kwargs
                  ψr=maybe_on_device_zeros(dt_cplx, NH, NR * 2, length(NC_all)),
@@ -19,8 +19,8 @@ function dc_long(
                  avg_NR=true,
                  debug_mode=true
                 )
-    Ef = KPM.dt_real(Ef)
-    H_rescale_factor = KPM.dt_real(H_rescale_factor)
+    Ef = KPMru.dt_real(Ef)
+    H_rescale_factor = KPMru.dt_real(H_rescale_factor)
     #TODO assert NC_all is sorted
     NC_orig = NC_all
     NC_sort_i = sortperm(NC_orig, rev=true)

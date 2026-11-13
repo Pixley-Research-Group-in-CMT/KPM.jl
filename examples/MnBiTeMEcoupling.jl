@@ -1,18 +1,18 @@
-using KPM
+using KPMru
 using Plots
 using LaTeXStrings
 
 include("MnBiTeModel.jl")
 
-function MET0(mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPM.JacksonKernel,
+function MET0(mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPMru.JacksonKernel,
     h = 0.001, Emin= -0.8, Emax = 0.0
     )
     x_all = collect(Emin:h:Emax)
     y_2 = zeros(ComplexF64, length(x_all))
-    mu2d_dev = KPM.maybe_to_device(mu2d[1:NC, 1:NC])
+    mu2d_dev = KPMru.maybe_to_device(mu2d[1:NC, 1:NC])
 
     for (i, x) in enumerate(x_all)
-        y_2[i] += KPM.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
+        y_2[i] += KPMru.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
     end
     #return x_all, y_2
     return sum(y_2) * h * (1im)
@@ -33,23 +33,23 @@ NR = 20 #10
 NH = H_norm.n
 Op1 = rx
 Op2 = (-Jy*rz-rz*Jy)/2
-mu_2d_xx = KPM.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
+mu_2d_xx = KPMru.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
 println("mu_2d_xx done")
 Op1 = rx
 Op2 = (Jx*rz+rz*Jx)/2
-mu_2d_yy = KPM.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
+mu_2d_yy = KPMru.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
 println("mu_2d_yy done")
 Op1 = rz
 Op2 = (rx*Jy-ry*Jx)./2
-mu_2d_zz_1 = KPM.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
+mu_2d_zz_1 = KPMru.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
 println("mu_2d_zz_1 done")
 Op1 = rz*ry./2
 Op2 = Jx
-mu_2d_zz_2 = KPM.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
+mu_2d_zz_2 = KPMru.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
 println("mu_2d_zz_2 done")
 Op1 = rz*rx./2
 Op2 = Jy
-mu_2d_zz_3 = KPM.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
+mu_2d_zz_3 = KPMru.kpm_2d(H_norm,Op1, Op2, NC, NR, NH; verbose=0);
 println("mu_2d_zz_3 done")
 mu_2d_zz = mu_2d_zz_1 + mu_2d_zz_2 - mu_2d_zz_3;
 #mu_2d = mu_2d_xx + mu_2d_yy + mu_2d_zz;
@@ -101,15 +101,15 @@ scatter!(ωsreno, real.(res[:,3])./Da, label=L"\mathrm{Re}\;G_{zz}^{(z)}",marker
 
 
 
-function MET0test(mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPM.JacksonKernel,
+function MET0test(mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPMru.JacksonKernel,
     h = 0.001, Emin= -0.8, Emax = 0.0
     )
     x_all = collect(Emin:h:Emax)
     y_2 = zeros(ComplexF64, length(x_all))
-    mu2d_dev = KPM.maybe_to_device(mu2d[1:NC, 1:NC])
+    mu2d_dev = KPMru.maybe_to_device(mu2d[1:NC, 1:NC])
 
     for (i, x) in enumerate(x_all)
-        y_2[i] += KPM.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
+        y_2[i] += KPMru.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
     end
     return x_all, y_2
     #return sum(y_2) * h * (1im)

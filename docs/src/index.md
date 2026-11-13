@@ -1,8 +1,8 @@
 ```@meta
-CurrentModule = KPM
+CurrentModule = KPMru
 ```
 
-# KPM
+# KPMru
 
 ```@index
 ```
@@ -21,13 +21,13 @@ Notes:
 - After installation import with:
 
 ```julia
-using KPM
+using KPMru
 ```
 
 - To update the package run:
 
 ```bash
-] update KPM
+] update KPMru
 ```
 and provide your GitHub username/password if prompted.
 
@@ -38,7 +38,7 @@ For more details see the project's README.
 ### 1) Density of States (DOS) — concise example
 
 ```julia
-using KPM, LinearAlgebra, SparseArrays, Plots
+using KPMru, LinearAlgebra, SparseArrays, Plots
 
 # small 1D tight-binding (periodic)
 function tb1dchain(N; t=1.0)
@@ -55,9 +55,9 @@ NC = 256
 NR = 4
 H = tb1dchain(N)
 # rescale H to (-1,1)
-a, Hn = KPM.normalizeH(H)
-mu = KPM.kpm_1d(Hn, NC, NR)
-E, rho = KPM.dos(mu, a; kernel=KPM.JacksonKernel, N_tilde=500)
+a, Hn = KPMru.normalizeH(H)
+mu = KPMru.kpm_1d(Hn, NC, NR)
+E, rho = KPMru.dos(mu, a; kernel=KPMru.JacksonKernel, N_tilde=500)
 
 plot(E, rho, xlabel="E", ylabel="DOS", legend=false)
 ```
@@ -65,7 +65,7 @@ plot(E, rho, xlabel="E", ylabel="DOS", legend=false)
 Reference (full example):
 
 ```julia
-using KPM
+using KPMru
 using LinearAlgebra
 using SparseArrays
 
@@ -90,15 +90,15 @@ nE = 1000             # output energy grid points
 H = tb1dchain(N)
 # Rescale H -> (-1, 1)
 #Hsparse = sparse(H.*(1+0*1im)) # make the Hamiltonian sparse under complex number
-b, H_norm = KPM.normalizeH(H)
+b, H_norm = KPMru.normalizeH(H)
 
 # Compute Chebyshev moments (DOS)
-mu = KPM.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
+mu = KPMru.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
 
 # Reconstruct DOS on a grid and map energies back to physical scale
-E, rho1024 = KPM.dos(mu, b;kernel = KPM.JacksonKernel, N_tilde=nE)
-E, rho64 = KPM.dos(mu[1:64], b;kernel = KPM.JacksonKernel, N_tilde=nE)
-E, rho32 = KPM.dos(mu[1:32], b;kernel = KPM.JacksonKernel, N_tilde=nE)
+E, rho1024 = KPMru.dos(mu, b;kernel = KPMru.JacksonKernel, N_tilde=nE)
+E, rho64 = KPMru.dos(mu[1:64], b;kernel = KPMru.JacksonKernel, N_tilde=nE)
+E, rho32 = KPMru.dos(mu[1:32], b;kernel = KPMru.JacksonKernel, N_tilde=nE)
 
 # Analytical DOS 
 rho_exact = zeros(length(E))
@@ -121,7 +121,7 @@ plot!(E, rho_exact, c=:black, ls=:dash, label=L"\mathrm{Analytic}")
 ### 2) Optical conductivity (graphene) — concise example
 
 ```julia
-using KPM, Plots
+using KPMru, Plots
 include("examples/GrapheneModel.jl") # provides GrapheneLattice
 
 L = 60
@@ -131,12 +131,12 @@ Hn = Ham / a
 NC = 256; NR = 6
 mu2d = zeros(ComplexF64, NC, NC)
 psi = exp.(2π*1im*rand(Hn.n, NR))
-KPM.normalize_by_col(psi, NR)
-KPM.kpm_2d!(Hn, Jy, Jy, NC, NR, Hn.n, mu2d, psi, psi)
+KPMru.normalize_by_col(psi, NR)
+KPMru.kpm_2d!(Hn, Jy, Jy, NC, NR, Hn.n, mu2d, psi, psi)
 
 # compute a sample optical conductivity (2D contribution) at ω=0.5
 ω = 0.5
-σ2 = KPM.d_optical_cond2(mu2d, NC, ω, 0.0)
+σ2 = KPMru.d_optical_cond2(mu2d, NC, ω, 0.0)
 println("Optical conductivity (2D part) at ω=", ω, " : ", σ2)
 ```
 
@@ -145,11 +145,11 @@ Reference (full example):
 ```julia
 using Plots
 using LaTeXStrings
-using KPM
+using KPMru
 
 include("GrapheneModel.jl") # Include the GrapheneLattice function and related structures
 
-function full_optical_condT0(mu1d,mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPM.JacksonKernel,
+function full_optical_condT0(mu1d,mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPMru.JacksonKernel,
     h = 0.001, Emin= -0.8, Emax = 0.0
     )
     # This function is used to calculate the full optical conductivity
@@ -157,12 +157,12 @@ function full_optical_condT0(mu1d,mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPM.Jack
     x_all = collect(Emin:h:Emax)
     y_1 = zeros(ComplexF64, length(x_all))
     y_2 = zeros(ComplexF64, length(x_all))
-    mu1d_dev = KPM.maybe_to_device(mu1d[1:NC])
-    mu2d_dev = KPM.maybe_to_device(mu2d[1:NC, 1:NC])
+    mu1d_dev = KPMru.maybe_to_device(mu1d[1:NC])
+    mu2d_dev = KPMru.maybe_to_device(mu2d[1:NC, 1:NC])
 
     for (i, x) in enumerate(x_all)
-        y_1[i] += KPM.d_optical_cond1(mu1d_dev, NC, x; δ=δ, λ=λ, kernel=kernel)
-        y_2[i] += KPM.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
+        y_1[i] += KPMru.d_optical_cond1(mu1d_dev, NC, x; δ=δ, λ=λ, kernel=kernel)
+        y_2[i] += KPMru.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
     end
     return (sum(y_1) * h * (-1im / ω), sum(y_2) * h * (-1im / ω))
     #y_all = y_1 .+ y_2;
@@ -181,11 +181,11 @@ NR = 10
 NH = H_norm.n
 mu_2d_yy = zeros(ComplexF64, NC, NC)
 psi_in_l = exp.(2pi * 1im * rand(NH, NR));
-KPM.normalize_by_col(psi_in_l, NR)
+KPMru.normalize_by_col(psi_in_l, NR)
 psi_in_r = psi_in_l
-@time KPM.kpm_2d!(H_norm, Jy, Jy, NC, NR, NH, mu_2d_yy, psi_in_l, psi_in_r; verbose=1);
+@time KPMru.kpm_2d!(H_norm, Jy, Jy, NC, NR, NH, mu_2d_yy, psi_in_l, psi_in_r; verbose=1);
 
-mu_1d_yy = KPM.kpm_1d_current(H_norm,Jyy, NC, NR; verbose=1)
+mu_1d_yy = KPMru.kpm_1d_current(H_norm,Jyy, NC, NR; verbose=1)
 
 t = 2.3
 μ = 0.466
@@ -285,12 +285,12 @@ Below is a concise list of the main public APIs provided by the package.
 - Kernels:
   - `JacksonKernel`, `LorentzKernels`
 
-- Utilities (KPM.Utils / device helpers):
+- Utilities (KPMru.Utils / device helpers):
   - `wrapAdd`, `normalizeH`, `isNotBoundary`, `timestamp`
   - device helpers: `whichcore`, `maybe_to_device`, `maybe_to_host`, `maybe_on_device_rand`, `maybe_on_device_zeros`
 
 For more details see the full API reference below.
 
 ```@autodocs
-Modules = [KPM]
+Modules = [KPMru]
 ```

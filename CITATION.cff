@@ -1,7 +1,7 @@
 cff-version: 1.2.0
-message: "If you use KPM.jl in your research, please cite this software using the metadata below."
+message: "If you use KPMru.jl in your research, please cite this software using the metadata below."
 type: software
-title: "KPM.jl: A Julia Package for Kernel Polynomial Method in Condensed Matter Physics"
+title: "KPMru.jl: A Julia Package for Kernel Polynomial Method in Condensed Matter Physics"
 authors:
   - family-names: Wu
     given-names: Ang-Kun
@@ -19,7 +19,7 @@ version: "0.1.1"
 repository-code: "https://github.com/Pixley-Research-Group-in-CMT/KPM.jl"
 license: MPL-2.0
 abstract: >-
-  KPM.jl is a Julia implementation of the Kernel Polynomial Method for
+  KPMru.jl is a Julia implementation of the Kernel Polynomial Method for
   tight-binding models in condensed matter physics. It provides calculations
   of spectral densities, DC conductivity, and linear and nonlinear optical
   responses for large sparse Hamiltonians, with optional CUDA GPU acceleration.

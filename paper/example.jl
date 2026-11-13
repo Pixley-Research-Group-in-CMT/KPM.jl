@@ -1,4 +1,4 @@
-using KPM
+using KPMru
 using LinearAlgebra
 using SparseArrays
 using Plots
@@ -25,15 +25,15 @@ nE = 1000             # output energy grid points
 H = tb1dchain(N)
 # Rescale H -> (-1, 1)
 #Hsparse = sparse(H.*(1+0*1im)) # make the Hamiltonian sparse under complex number
-b, H_norm = KPM.normalizeH(H)
+b, H_norm = KPMru.normalizeH(H)
 
 # Compute Chebyshev moments (DOS)
-mu = KPM.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
+mu = KPMru.kpm_1d(H_norm, NC, NR)    # returns moments (array-like)
 
 # Reconstruct DOS on a grid and map energies back to physical scale
-E, rho1024 = KPM.dos(mu, b;kernel = KPM.JacksonKernel, N_tilde=nE)
-E, rho64 = KPM.dos(mu[1:64], b;kernel = KPM.JacksonKernel, N_tilde=nE)
-E, rho32 = KPM.dos(mu[1:32], b;kernel = KPM.JacksonKernel, N_tilde=nE)
+E, rho1024 = KPMru.dos(mu, b;kernel = KPMru.JacksonKernel, N_tilde=nE)
+E, rho64 = KPMru.dos(mu[1:64], b;kernel = KPMru.JacksonKernel, N_tilde=nE)
+E, rho32 = KPMru.dos(mu[1:32], b;kernel = KPMru.JacksonKernel, N_tilde=nE)
 
 # Analytical DOS 
 rho_exact = zeros(length(E))

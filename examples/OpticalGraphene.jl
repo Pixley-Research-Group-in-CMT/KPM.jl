@@ -1,10 +1,10 @@
 using Plots
 using LaTeXStrings
-using KPM
+using KPMru
 
 include("GrapheneModel.jl") # Include the GrapheneLattice function and related structures
 
-function full_optical_condT0(mu1d,mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPM.JacksonKernel,
+function full_optical_condT0(mu1d,mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPMru.JacksonKernel,
     h = 0.001, Emin= -0.8, Emax = 0.0
     )
     # This function is used to calculate the full optical conductivity
@@ -12,12 +12,12 @@ function full_optical_condT0(mu1d,mu2d, NC, ω; δ=1e-5, λ=0.0, kernel=KPM.Jack
     x_all = collect(Emin:h:Emax)
     y_1 = zeros(ComplexF64, length(x_all))
     y_2 = zeros(ComplexF64, length(x_all))
-    mu1d_dev = KPM.maybe_to_device(mu1d[1:NC])
-    mu2d_dev = KPM.maybe_to_device(mu2d[1:NC, 1:NC])
+    mu1d_dev = KPMru.maybe_to_device(mu1d[1:NC])
+    mu2d_dev = KPMru.maybe_to_device(mu2d[1:NC, 1:NC])
 
     for (i, x) in enumerate(x_all)
-        y_1[i] += KPM.d_optical_cond1(mu1d_dev, NC, x; δ=δ, λ=λ, kernel=kernel)
-        y_2[i] += KPM.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
+        y_1[i] += KPMru.d_optical_cond1(mu1d_dev, NC, x; δ=δ, λ=λ, kernel=kernel)
+        y_2[i] += KPMru.d_optical_cond2(mu2d_dev, NC, ω, x; δ=δ, λ=λ, kernel=kernel)
     end
     return (sum(y_1) * h * (-1im / ω), sum(y_2) * h * (-1im / ω))
     #y_all = y_1 .+ y_2;
@@ -39,13 +39,13 @@ NR = 10
 NH = H_norm.n
 mu_2d_yy = zeros(ComplexF64, NC, NC)
 psi_in_l = exp.(2pi * 1im * rand(NH, NR));
-KPM.normalize_by_col(psi_in_l, NR)
+KPMru.normalize_by_col(psi_in_l, NR)
 psi_in_r = psi_in_l
-@time KPM.kpm_2d!(H_norm, Jy, Jy, NC, NR, NH, mu_2d_yy, psi_in_l, psi_in_r; verbose=1);
+@time KPMru.kpm_2d!(H_norm, Jy, Jy, NC, NR, NH, mu_2d_yy, psi_in_l, psi_in_r; verbose=1);
 
 #mu_1d_xy = zeros(ComplexF64, NR, NC)
-mu_1d_yy = KPM.kpm_1d_current(H_norm,Jyy, NC, NR; verbose=1)
-#KPM.kpm_1d_current!(H_norm, Jxy, NC, NR, NH, mu_1d_xy, psi_in_l; verbose=1);
+mu_1d_yy = KPMru.kpm_1d_current(H_norm,Jyy, NC, NR; verbose=1)
+#KPMru.kpm_1d_current!(H_norm, Jxy, NC, NR, NH, mu_1d_xy, psi_in_l; verbose=1);
 
 #=
 ω = 1.0
